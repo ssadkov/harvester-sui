@@ -1,21 +1,22 @@
 "use client";
 
-import { ReactNode, useRef, useState, useEffect } from "react";
+import { ReactNode, useRef, useState } from "react";
 import { useActions } from "ai/rsc";
 import { Message } from "@/components/message";
 import { useScrollToBottom } from "@/components/use-scroll-to-bottom";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { MasonryIcon, VercelIcon } from "@/components/icons";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { SendHorizonal, Wallet } from "lucide-react";
-import { WalletProvider, ConnectButton } from '@suiet/wallet-kit';
+import { SendHorizonal, Menu } from "lucide-react";
+import { ConnectButton } from '@suiet/wallet-kit';
 
 export default function Home() {
   const { sendMessage } = useActions();
 
   const [input, setInput] = useState<string>("");
   const [messages, setMessages] = useState<Array<ReactNode>>([]);
+  const [showActionButtons, setShowActionButtons] = useState(false);
 
   const inputRef = useRef<HTMLInputElement>(null);
   const [messagesContainerRef, messagesEndRef] =
@@ -36,122 +37,182 @@ export default function Home() {
     },
   ];
 
+  // Функция для выполнения действия и скрытия кнопок
+  const handleActionClick = async (action: string) => {
+    setShowActionButtons(false);
+    setMessages((messages) => [
+      ...messages,
+      <Message key={messages.length} role="user" content={action} />,
+    ]);
+    const response: ReactNode = await sendMessage(action);
+    setMessages((messages) => [...messages, response]);
+  };
+
   return (
-    <WalletProvider>
-      <div className="flex flex-row justify-center pb-20 h-dvh bg-white dark:bg-zinc-900">
-        {/* Wallet Button in Top Right */}
-        <div className="fixed top-4 right-4 z-10">
-          <ConnectButton />
+    <div className="flex flex-row justify-center pb-20 h-dvh bg-white dark:bg-zinc-900">
+      {/* Кнопка кошелька в правом верхнем углу */}
+      <div className="fixed top-4 right-4 z-10">
+        <ConnectButton />
+      </div>
+
+      <div className="flex flex-col justify-between gap-4">
+        <div
+          ref={messagesContainerRef}
+          className="flex flex-col gap-3 h-full w-dvw items-center overflow-y-scroll"
+        >
+          {messages.length === 0 && (
+            <motion.div className="h-[350px] px-4 w-full md:w-[500px] md:px-0 pt-20">
+              <div className="border rounded-lg p-6 flex flex-col gap-4 text-zinc-500 text-sm dark:text-zinc-400 dark:border-zinc-700 shadow-lg">
+                <p className="flex flex-row justify-center gap-4 items-center text-zinc-900 dark:text-zinc-50">
+                  <VercelIcon size={16} />
+                  <span>+</span>
+                  <MasonryIcon />
+                </p>
+                <p>
+                  The streamUI function allows you to stream React Server
+                  Components along with your language model generations to
+                  integrate dynamic user interfaces into your application.
+                </p>
+                <p>
+                  {" "}
+                  Learn more about the{" "}
+                  <Link
+                    className="text-blue-500 dark:text-blue-400"
+                    href="https://sdk.vercel.ai/docs/ai-sdk-rsc/streaming-react-components"
+                    target="_blank"
+                  >
+                    streamUI{" "}
+                  </Link>
+                  hook from Vercel AI SDK.
+                </p>
+              </div>
+            </motion.div>
+          )}
+          {messages.map((message) => message)}
+          <div ref={messagesEndRef} />
         </div>
 
-        <div className="flex flex-col justify-between gap-4">
-          <div
-            ref={messagesContainerRef}
-            className="flex flex-col gap-3 h-full w-dvw items-center overflow-y-scroll"
-          >
-            {messages.length === 0 && (
-              <motion.div className="h-[350px] px-4 w-full md:w-[500px] md:px-0 pt-20">
-                <div className="border rounded-lg p-6 flex flex-col gap-4 text-zinc-500 text-sm dark:text-zinc-400 dark:border-zinc-700">
-                  <p className="flex flex-row justify-center gap-4 items-center text-zinc-900 dark:text-zinc-50">
-                    <VercelIcon size={16} />
-                    <span>+</span>
-                    <MasonryIcon />
-                  </p>
-                  <p>
-                    The streamUI function allows you to stream React Server
-                    Components along with your language model generations to
-                    integrate dynamic user interfaces into your application.
-                  </p>
-                  <p>
-                    {" "}
-                    Learn more about the{" "}
-                    <Link
-                      className="text-blue-500 dark:text-blue-400"
-                      href="https://sdk.vercel.ai/docs/ai-sdk-rsc/streaming-react-components"
-                      target="_blank"
-                    >
-                      streamUI{" "}
-                    </Link>
-                    hook from Vercel AI SDK.
-                  </p>
-                </div>
-              </motion.div>
-            )}
-            {messages.map((message) => message)}
-            <div ref={messagesEndRef} />
-          </div>
-
-          <div className="grid sm:grid-cols-2 gap-2 w-full px-4 md:px-0 mx-auto md:max-w-[500px] mb-4">
-            {messages.length === 0 &&
-              suggestedActions.map((action, index) => (
-                <motion.div
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.01 * index }}
-                  key={index}
-                  className={index > 1 ? "hidden sm:block" : "block"}
-                >
-                  <button
-                    onClick={async () => {
-                      setMessages((messages) => [
-                        ...messages,
-                        <Message
-                          key={messages.length}
-                          role="user"
-                          content={action.action}
-                        />,
-                      ]);
-                      const response: ReactNode = await sendMessage(
-                        action.action,
-                      );
-                      setMessages((messages) => [...messages, response]);
-                    }}
-                    className="w-full text-left border border-zinc-200 dark:border-zinc-800 text-zinc-800 dark:text-zinc-300 rounded-lg p-2 text-sm hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors flex flex-col"
+        {/* Центральные кнопки действий, показываются только когда showActionButtons=true */}
+        <AnimatePresence>
+          {showActionButtons && (
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.9 }}
+              className="fixed inset-0 flex items-center justify-center z-20"
+              style={{ pointerEvents: 'none' }}
+            >
+              <div className="bg-white dark:bg-zinc-800 rounded-xl shadow-lg p-6 grid grid-cols-2 gap-4"
+                   style={{ pointerEvents: 'auto' }}>
+                {suggestedActions.map((action, index) => (
+                  <motion.button
+                    key={index}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.05 * index }}
+                    onClick={() => handleActionClick(action.action)}
+                    className="text-left border border-zinc-200 dark:border-zinc-700 text-zinc-800 dark:text-zinc-300 rounded-lg p-4 text-sm hover:bg-zinc-100 dark:hover:bg-zinc-700 transition-colors flex flex-col"
                   >
                     <span className="font-medium">{action.title}</span>
-                    <span className="text-zinc-500 dark:text-zinc-400">
-                      {action.label}
-                    </span>
-                  </button>
-                </motion.div>
-              ))}
-          </div>
+                    <span className="text-zinc-500 dark:text-zinc-400">{action.label}</span>
+                  </motion.button>
+                ))}
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
-          <form
-            className="flex flex-col gap-2 relative items-center"
-            onSubmit={async (event) => {
-              event.preventDefault();
-
-              setMessages((messages) => [
-                ...messages,
-                <Message key={messages.length} role="user" content={input} />,
-              ]);
-              setInput("");
-
-              const response: ReactNode = await sendMessage(input);
-              setMessages((messages) => [...messages, response]);
-            }}
-          >
-            <div className="flex w-full md:max-w-[500px] max-w-[calc(100dvw-32px)]">
-              <input
-                ref={inputRef}
-                className="flex-grow rounded-l-md bg-zinc-100 px-2 py-1.5 outline-none dark:bg-zinc-700 text-zinc-800 dark:text-zinc-300"
-                placeholder="Send a message..."
-                value={input}
-                onChange={(event) => setInput(event.target.value)}
-              />
-              <Button
-                type="submit"
-                variant="default"
-                size="icon"
-                className="rounded-l-none"
+        <div className="grid sm:grid-cols-2 gap-2 w-full px-4 md:px-0 mx-auto md:max-w-[500px] mb-4">
+          {messages.length === 0 &&
+            suggestedActions.map((action, index) => (
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.01 * index }}
+                key={index}
+                className={index > 1 ? "hidden sm:block" : "block"}
               >
-                <SendHorizonal className="h-4 w-4" />
-              </Button>
-            </div>
-          </form>
+                <button
+                  onClick={async () => {
+                    setMessages((messages) => [
+                      ...messages,
+                      <Message
+                        key={messages.length}
+                        role="user"
+                        content={action.action}
+                      />,
+                    ]);
+                    const response: ReactNode = await sendMessage(
+                      action.action,
+                    );
+                    setMessages((messages) => [...messages, response]);
+                  }}
+                  className="w-full text-left border border-zinc-200 dark:border-zinc-800 text-zinc-800 dark:text-zinc-300 rounded-lg p-2 text-sm hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors flex flex-col shadow-md"
+                >
+                  <span className="font-medium">{action.title}</span>
+                  <span className="text-zinc-500 dark:text-zinc-400">
+                    {action.label}
+                  </span>
+                </button>
+              </motion.div>
+            ))}
         </div>
+
+        <form
+          className="flex flex-col gap-2 relative items-center"
+          onSubmit={async (event) => {
+            event.preventDefault();
+
+            setMessages((messages) => [
+              ...messages,
+              <Message key={messages.length} role="user" content={input} />,
+            ]);
+            setInput("");
+
+            const response: ReactNode = await sendMessage(input);
+            setMessages((messages) => [...messages, response]);
+          }}
+        >
+          <div className="flex w-full md:max-w-[500px] max-w-[calc(100dvw-32px)] shadow-lg">
+            <input
+              ref={inputRef}
+              className="flex-grow rounded-l-md bg-zinc-100 px-2 py-1.5 outline-none dark:bg-zinc-700 text-zinc-800 dark:text-zinc-300"
+              placeholder="Send a message..."
+              value={input}
+              onChange={(event) => setInput(event.target.value)}
+            />
+            <Button
+              type="submit"
+              variant="default"
+              size="icon"
+              className="rounded-none border-r-0"
+            >
+              <SendHorizonal className="h-4 w-4" />
+            </Button>
+            
+            {/* Новая кнопка для показа действий (показывается только когда кнопки действий скрыты) */}
+            <AnimatePresence>
+              {!showActionButtons && (
+                <motion.div
+                  initial={{ opacity: 0, width: 0 }}
+                  animate={{ opacity: 1, width: "auto" }}
+                  exit={{ opacity: 0, width: 0 }}
+                >
+                  <Button
+                    type="button"
+                    variant="default"
+                    size="icon"
+                    className="rounded-l-none"
+                    onClick={() => setShowActionButtons(true)}
+                  >
+                    <Menu className="h-4 w-4" />
+                  </Button>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+        </form>
       </div>
-    </WalletProvider>
+    </div>
   );
 }
