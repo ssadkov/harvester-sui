@@ -7,6 +7,9 @@ import { useScrollToBottom } from "@/components/use-scroll-to-bottom";
 import { motion } from "framer-motion";
 import { MasonryIcon, VercelIcon } from "@/components/icons";
 import Link from "next/link";
+import { Button } from "@/components/ui/button";
+import { SendHorizonal } from "lucide-react";
+
 
 export default function Home() {
   const { sendMessage } = useActions();
@@ -123,16 +126,25 @@ export default function Home() {
             setMessages((messages) => [...messages, response]);
           }}
         >
-          <input
-            ref={inputRef}
-            className="bg-zinc-100 rounded-md px-2 py-1.5 w-full outline-none dark:bg-zinc-700 text-zinc-800 dark:text-zinc-300 md:max-w-[500px] max-w-[calc(100dvw-32px)]"
-            placeholder="Send a message..."
-            value={input}
-            onChange={(event) => {
-              setInput(event.target.value);
-            }}
-          />
+          <div className="flex w-full md:max-w-[500px] max-w-[calc(100dvw-32px)]">
+            <input
+              ref={inputRef}
+              className="flex-grow rounded-l-md bg-zinc-100 px-2 py-1.5 outline-none dark:bg-zinc-700 text-zinc-800 dark:text-zinc-300"
+              placeholder="Send a message..."
+              value={input}
+              onChange={(event) => setInput(event.target.value)}
+            />
+            <Button
+              type="submit"
+              variant="default"
+              size="icon"
+              className="rounded-l-none"
+            >
+              <SendHorizonal className="h-4 w-4" />
+            </Button>
+          </div>
         </form>
+
       </div>
     </div>
   );
