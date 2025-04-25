@@ -2,11 +2,14 @@ import "./globals.css";
 import { Metadata } from "next";
 import { Toaster } from "sonner";
 import { AI } from "./actions";
+import { SuiWalletProvider } from "@/app/wallet-provider"; // путь зависит от твоей структуры
+import "@suiet/wallet-kit/style.css";
+
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://ai-sdk-preview-rsc-genui.vercel.dev"),
-  title: "Generative User Interfaces Preview",
-  description: "Generative UI with React Server Components and Vercel AI SDK",
+  title: "SUI Harvester AI",
+  description: "Yield farming AI aggregator for SUI",
 };
 
 export default function RootLayout({
@@ -18,7 +21,9 @@ export default function RootLayout({
     <html lang="en">
       <body>
         <Toaster position="top-center" richColors />
-        <AI>{children}</AI>
+        <SuiWalletProvider>
+          <AI>{children}</AI>
+        </SuiWalletProvider>
       </body>
     </html>
   );
