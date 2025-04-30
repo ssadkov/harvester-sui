@@ -48,6 +48,11 @@ export default function Home() {
     setMessages((messages) => [...messages, response]);
   };
 
+  // Функция для переключения видимости меню действий
+  const toggleActionButtons = () => {
+    setShowActionButtons(!showActionButtons);
+  };
+
   return (
     <div className="flex flex-row justify-center pb-20 h-dvh bg-white dark:bg-zinc-900">
       {/* Кнопка кошелька в правом верхнем углу */}
@@ -190,26 +195,16 @@ export default function Home() {
               <SendHorizonal className="h-4 w-4" />
             </Button>
             
-            {/* Новая кнопка для показа действий (показывается только когда кнопки действий скрыты) */}
-            <AnimatePresence>
-              {!showActionButtons && (
-                <motion.div
-                  initial={{ opacity: 0, width: 0 }}
-                  animate={{ opacity: 1, width: "auto" }}
-                  exit={{ opacity: 0, width: 0 }}
-                >
-                  <Button
-                    type="button"
-                    variant="default"
-                    size="icon"
-                    className="rounded-l-none"
-                    onClick={() => setShowActionButtons(true)}
-                  >
-                    <Menu className="h-4 w-4" />
-                  </Button>
-                </motion.div>
-              )}
-            </AnimatePresence>
+            {/* Кнопка меню теперь всегда видна */}
+            <Button
+              type="button"
+              variant="default"
+              size="icon"
+              className="rounded-l-none"
+              onClick={toggleActionButtons}
+            >
+              <Menu className="h-4 w-4" />
+            </Button>
           </div>
         </form>
       </div>
