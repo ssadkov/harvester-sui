@@ -39,6 +39,9 @@ export const Message = ({
   role: "assistant" | "user";
   content: string | ReactNode;
 }) => {
+  // Определяем, является ли контент строкой для использования Markdown
+  const isStringContent = typeof content === "string";
+
   return (
     <motion.div
       className={`flex flex-row gap-4 px-4 w-full md:w-[500px] md:px-0 first-of-type:pt-20`}
@@ -51,7 +54,7 @@ export const Message = ({
 
       <div className="flex flex-col gap-1 w-full">
         <div className="text-zinc-800 dark:text-zinc-300 flex flex-col gap-4">
-          {content}
+          {isStringContent ? <Markdown>{content as string}</Markdown> : content}
         </div>
       </div>
     </motion.div>
