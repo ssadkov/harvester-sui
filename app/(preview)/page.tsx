@@ -74,11 +74,9 @@ export default function Home() {
                   <MasonryIcon />
                 </p>
                 <p>
-                  The streamUI function allows you to stream React Server
-                  Components along with your language model generations to
-                  integrate dynamic user interfaces into your application.
+                SUI Harvester AI - an intelligent assistant that analyzes and manages your liquidity in the SUI ecosystem. Connect your wallet and let our AI optimize your DeFi operations for maximum yield and efficient asset management.
                 </p>
-                <p>
+               {/* <p>
                   {" "}
                   Learn more about the{" "}
                   <Link
@@ -89,7 +87,7 @@ export default function Home() {
                     streamUI{" "}
                   </Link>
                   hook from Vercel AI SDK.
-                </p>
+                </p> */}
               </div>
             </motion.div>
           )}
