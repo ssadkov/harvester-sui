@@ -13,6 +13,7 @@ import { ConnectButton, useWallet } from '@suiet/wallet-kit';
 import { fetchScallopBalance } from "@/app/actions/balance-actions";
 import ReactMarkdown from 'react-markdown';
 
+
 export default function Home() {
   const { sendMessage } = useActions();
   const wallet = useWallet();
