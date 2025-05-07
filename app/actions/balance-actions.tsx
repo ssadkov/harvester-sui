@@ -1,5 +1,28 @@
 "use server";
 
+import { z } from 'zod';
+
+/**
+ * Интерфейс для позиций Momentum
+ */
+interface MomentumPosition {
+  objectId: string;
+  poolId: string;
+  upperPrice: number;
+  lowerPrice: number;
+  upperTick: number;
+  lowerTick: number;
+  liquidity: string;
+  amount: number;
+  status: string;
+  claimableRewards: number;
+  rewarders: any[];
+  feeAmountXUsd: number;
+  feeAmountYUsd: number;
+  feeAmountX: number;
+  feeAmountY: number;
+}
+
 /**
  * Форматирует данные о балансе Scallop для удобного чтения
  */
@@ -136,6 +159,81 @@ function formatScallopBalance(data: any) {
 }
 
 /**
+ * Форматирует данные о позициях Momentum для удобного чтения
+ */
+function formatMomentumBalance(positions: MomentumPosition[]) {
+  // Если нет позиций, возвращаем информацию об отсутствии
+  if (!positions || positions.length === 0) {
+    return {
+      formatted: "# Momentum Positions\n\nYou don't have any active Momentum positions.",
+      raw: []
+    };
+  }
+  
+  // Вспомогательные функции форматирования
+  const formatNumber = (num: number, digits = 2) => {
+    if (num < 0.00001 && num > 0) {
+      return num.toExponential(4);
+    }
+    
+    const decimals = num < 1 && num > 0 ? 6 : digits;
+    
+    return num.toLocaleString('en-US', {
+      minimumFractionDigits: 0,
+      maximumFractionDigits: decimals
+    });
+  };
+  
+  const formatUSD = (num: number) => {
+    if (num < 0.01 && num > 0) {
+      return `$${num.toFixed(6)}`;
+    }
+    return `$${formatNumber(num, 2)}`;
+  };
+  
+  // Создаем массив строк для отображения
+  let output: string[] = ["# Your Momentum Positions\n"];
+  
+  // Рассчитываем общую стоимость всех позиций
+  const totalValue = positions.reduce((sum, position) => sum + position.amount, 0);
+  output.push(`## Total Value: ${formatUSD(totalValue)}\n`);
+  
+  // Рассчитываем общую сумму наград
+  const totalRewards = positions.reduce((sum, position) => sum + position.claimableRewards, 0);
+  const totalFees = positions.reduce((sum, position) => sum + position.feeAmountXUsd + position.feeAmountYUsd, 0);
+  
+  output.push(`### Claimable Rewards: ${formatUSD(totalRewards)}`);
+  output.push(`### Accumulated Fees: ${formatUSD(totalFees)}\n`);
+  
+  // Детали каждой позиции
+  output.push(`## Position Details (${positions.length})`);
+  
+  positions.forEach((position, index) => {
+    output.push(`### Position ${index + 1}`);
+    output.push(`- Value: ${formatUSD(position.amount)}`);
+    output.push(`- Status: ${position.status}`);
+    output.push(`- Price Range: ${formatNumber(position.lowerPrice)} - ${formatNumber(position.upperPrice)}`);
+    
+    if (position.claimableRewards > 0) {
+      output.push(`- Claimable Rewards: ${formatUSD(position.claimableRewards)}`);
+    }
+    
+    const totalFees = position.feeAmountXUsd + position.feeAmountYUsd;
+    if (totalFees > 0) {
+      output.push(`- Accumulated Fees: ${formatUSD(totalFees)}`);
+    }
+    
+    output.push(`- Position ID: ${position.objectId.substring(0, 10)}...`);
+    output.push(`- Pool ID: ${position.poolId.substring(0, 10)}...\n`);
+  });
+  
+  return {
+    formatted: output.join('\n'),
+    raw: positions
+  };
+}
+
+/**
  * Серверное действие для получения баланса пользователя в Scallop
  * @param address адрес кошелька пользователя
  * @returns форматированные данные о балансе или объект с ошибкой
@@ -170,5 +268,103 @@ export async function fetchScallopBalance(address: string) {
       formatted: `Error: ${error instanceof Error ? error.message : "Failed to fetch balance data"}`,
       raw: { error: error instanceof Error ? error.message : "Failed to fetch balance data" }
     };
+  }
+}
+
+/**
+ * Серверное действие для получения позиций пользователя в Momentum
+ * @param address адрес кошелька пользователя
+ * @returns форматированные данные о позициях или объект с ошибкой
+ */
+export async function fetchMomentumBalance(address: string) {
+  try {
+    console.log(`Fetching Momentum positions for address: ${address}`);
+    
+    const response = await fetch(
+      `https://harvester-server-production.up.railway.app/momentum/balance/${address}`,
+      {
+        method: 'GET',
+        headers: {
+          'accept': '*/*'
+        },
+        // Опция, позволяющая обновить кеш
+        next: { revalidate: 60 } // Обновляет кеш каждые 60 секунд
+      }
+    );
+
+    if (!response.ok) {
+      throw new Error(`API request failed with status: ${response.status}`);
+    }
+
+    const positions = await response.json();
+    
+    // Форматируем данные для удобного отображения
+    return formatMomentumBalance(positions);
+  } catch (error) {
+    console.error("Server error fetching Momentum positions:", error);
+    return { 
+      formatted: `Error: ${error instanceof Error ? error.message : "Failed to fetch Momentum positions"}`,
+      raw: { error: error instanceof Error ? error.message : "Failed to fetch Momentum positions" }
+    };
+  }
+}
+
+// Token interface
+export interface Token {
+  coinType: string;
+  totalBalance: string;
+  decimals: number;
+  name: string;
+  symbol: string;
+  description: string;
+  iconUrl: string | null;
+  id: string;
+  balance: string;
+  price?: string;
+  usdPrice?: string;
+}
+
+export interface TokenData {
+  [key: string]: Token;
+}
+
+// Function to fetch token balances
+export async function fetchTokenBalances(address: string): Promise<TokenData> {
+  try {
+    const response = await fetch(`https://finkeeper.pro/apisui?address=${address}`);
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    const data = await response.json();
+    return data;
+  } catch (error) {
+    console.error('Error fetching token balances:', error);
+    throw error;
+  }
+}
+
+// Function to sort tokens by USD value
+export async function sortTokensByValue(tokens: TokenData): Promise<Token[]> {
+  try {
+    return Object.values(tokens).sort((a, b) => {
+      const valueA = parseFloat(a.usdPrice || '0');
+      const valueB = parseFloat(b.usdPrice || '0');
+      return valueB - valueA;
+    });
+  } catch (error) {
+    console.error('Error sorting tokens:', error);
+    throw new Error('Failed to sort tokens');
+  }
+}
+
+// Function to calculate total portfolio value
+export async function calculateTotalPortfolioValue(tokens: TokenData): Promise<number> {
+  try {
+    return Object.values(tokens).reduce((total, token) => {
+      return total + parseFloat(token.usdPrice || '0');
+    }, 0);
+  } catch (error) {
+    console.error('Error calculating portfolio value:', error);
+    throw new Error('Failed to calculate portfolio value');
   }
 }

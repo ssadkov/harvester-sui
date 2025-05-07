@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useWallet } from '@suiet/wallet-kit';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Checkbox } from '@/components/ui/checkbox';
 import { 
   Card, 
   CardContent, 
@@ -15,11 +16,16 @@ import {
 import { Label } from '@/components/ui/label';
 import { SendIcon } from 'lucide-react';
 import { Transaction } from '@mysten/sui/transactions';
+import { 
+  prepareTransactionForSigning,
+  sendSponsoredTransaction 
+} from '@/utils/sponsored-transactions';
 
 export default function SendTransactionPage() {
   const wallet = useWallet();
   const [amount, setAmount] = useState('');
   const [recipientAddress, setRecipientAddress] = useState('');
+  const [useSponsorship, setUseSponsorship] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [txResult, setTxResult] = useState<any>(null);
   const [error, setError] = useState<string | null>(null);
@@ -55,32 +61,90 @@ export default function SendTransactionPage() {
     setTxResult(null);
 
     try {
-      // Создаем транзакцию
-      const tx = new Transaction();
-      
-      // Конвертируем сумму в наименьшие единицы (Mist для SUI)
-      const amountInMist = BigInt(Math.round(Number(amount) * 10 ** 9)); // 9 десятичных знаков для SUI
-      
-      // Используем tx.gas для создания и отправки монеты
-      // tx.gas автоматически ссылается на монету, используемую для оплаты газа
-      const [coin] = tx.splitCoins(
-        tx.gas, 
-        [tx.pure.u64(amountInMist)]
-      );
-      
-      // Передаем созданную монету получателю
-      tx.transferObjects(
-        [coin], 
-        tx.pure.address(recipientAddress)
-      );
+      // Используем разные подходы в зависимости от выбора спонсирования
+      if (useSponsorship) {
+        // Спонсорская транзакция
+        console.log('Отправляем спонсорскую транзакцию...');
+        
+        // Подготавливаем транзакцию для подписи
+        const prepResult = await prepareTransactionForSigning(
+          amount,
+          'SUI',
+          recipientAddress,
+          wallet.account.address
+        );
 
-      // Подписываем и выполняем транзакцию
-      const result = await wallet.signAndExecuteTransaction({
-        transaction: tx
-      });
+        if (!prepResult.success || !prepResult.transaction) {
+          throw new Error(prepResult.error || 'Не удалось подготовить транзакцию');
+        }
 
-      console.log('Transaction result:', result);
-      setTxResult(result);
+        // Запрашиваем подпись от кошелька пользователя
+        // При подготовке спонсорской транзакции
+        const userSignature = await wallet.signTransaction({
+            transaction: {
+            toJSON: async () => {
+                // Если prepResult.transaction уже имеет txBytes
+                if (prepResult.transaction.txBytes) {
+                // Возвращаем Base64 строку из байтов транзакции
+                return Promise.resolve(Buffer.from(prepResult.transaction.txBytes).toString('base64'));
+                } else if (prepResult.txBytes) {
+                // Используем txBytes напрямую, если transaction.txBytes не доступен
+                return Promise.resolve(Buffer.from(prepResult.txBytes).toString('base64'));
+                }
+                // Если ничего не доступно, возвращаем ошибку
+                return Promise.reject(new Error('Транзакция не содержит данных'));
+            }
+            }
+        });
+
+        if (!userSignature) {
+          throw new Error('Не удалось получить подпись от кошелька');
+        }
+
+        // Отправляем спонсорскую транзакцию
+        const result = await sendSponsoredTransaction(
+          amount,
+          'SUI',
+          recipientAddress,
+          wallet.account.address,
+          userSignature.signature
+        );
+
+        if (!result.success) {
+          throw new Error(result.error || 'Ошибка при отправке спонсорской транзакции');
+        }
+
+        setTxResult(result);
+      } else {
+        // Обычная транзакция
+        console.log('Отправляем обычную транзакцию...');
+        
+        // Создаем транзакцию
+        const tx = new Transaction();
+        
+        // Конвертируем сумму в наименьшие единицы (Mist для SUI)
+        const amountInMist = BigInt(Math.round(Number(amount) * 10 ** 9)); // 9 десятичных знаков для SUI
+        
+        // Используем tx.gas для создания и отправки монеты
+        const [coin] = tx.splitCoins(
+          tx.gas, 
+          [tx.pure.u64(amountInMist)]
+        );
+        
+        // Передаем созданную монету получателю
+        tx.transferObjects(
+          [coin], 
+          tx.pure.address(recipientAddress)
+        );
+
+        // Подписываем и выполняем транзакцию
+        const result = await wallet.signAndExecuteTransaction({
+          transaction: tx
+        });
+
+        console.log('Transaction result:', result);
+        setTxResult(result);
+      }
       
       // Очистка формы после успешной транзакции
       setAmount('');
@@ -125,6 +189,20 @@ export default function SendTransactionPage() {
             />
           </div>
 
+          <div className="flex items-center space-x-2">
+            <Checkbox 
+              id="useSponsorship" 
+              checked={useSponsorship}
+              onCheckedChange={(checked) => setUseSponsorship(checked === true)}
+            />
+            <Label 
+              htmlFor="useSponsorship" 
+              className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+            >
+              Использовать спонсора (бесплатная отправка)
+            </Label>
+          </div>
+
           {error && (
             <div className="text-sm text-red-500 p-2 bg-red-50 dark:bg-red-900/20 rounded">
               {error}
@@ -146,7 +224,7 @@ export default function SendTransactionPage() {
             disabled={isLoading || !wallet.connected}
             className="w-full flex items-center justify-center gap-2"
           >
-            {isLoading ? 'Отправка...' : 'Отправить SUI'}
+            {isLoading ? 'Отправка...' : useSponsorship ? 'Отправить бесплатно' : 'Отправить SUI'}
             {!isLoading && <SendIcon className="h-4 w-4" />}
           </Button>
 
