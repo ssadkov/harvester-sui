@@ -83,13 +83,9 @@ export default function SendTransactionPage() {
         const userSignature = await wallet.signTransaction({
             transaction: {
             toJSON: async () => {
-                // Если prepResult.transaction уже имеет txBytes
-                if (prepResult.transaction.txBytes) {
-                // Возвращаем Base64 строку из байтов транзакции
-                return Promise.resolve(Buffer.from(prepResult.transaction.txBytes).toString('base64'));
-                } else if (prepResult.txBytes) {
-                // Используем txBytes напрямую, если transaction.txBytes не доступен
-                return Promise.resolve(Buffer.from(prepResult.txBytes).toString('base64'));
+                // Используем txBytes напрямую из prepResult
+                if (prepResult.txBytes) {
+                    return Promise.resolve(Buffer.from(prepResult.txBytes).toString('base64'));
                 }
                 // Если ничего не доступно, возвращаем ошибку
                 return Promise.reject(new Error('Транзакция не содержит данных'));
