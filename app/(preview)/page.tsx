@@ -486,7 +486,7 @@ export default function Home() {
                   <div className="flex items-center gap-2">
                     <CreditCard className="h-4 w-4 text-blue-500" />
                     <span className="font-medium text-zinc-900 dark:text-zinc-100">
-                      Tokens ${formatNumber(totalTokenValue)}
+                      Wallet ${formatNumber(totalTokenValue)}
                     </span>
                   </div>
                   {showTokens ? (
@@ -504,12 +504,7 @@ export default function Home() {
                       </div>
                     ) : userTokens.length > 0 ? (
                       <div className="space-y-2">
-                        <div className="flex items-center justify-between">
-                          <h3 className="text-sm font-medium">Tokens</h3>
-                          <span className="text-sm text-zinc-500">
-                            {formatUSDValue(totalTokenValue)}
-                          </span>
-                        </div>
+                        
                         <div className="space-y-2">
                           {userTokens.map((token) => (
                             <div key={token.id} className="flex items-center justify-between p-2 rounded-lg bg-zinc-50 dark:bg-zinc-800/50">
