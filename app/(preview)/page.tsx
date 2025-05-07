@@ -815,7 +815,13 @@ export default function Home() {
                   className="w-full flex items-center justify-between p-3 bg-zinc-50 dark:bg-zinc-900 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
                 >
                   <div className="flex items-center gap-2">
-                    <LineChart className="h-4 w-4 text-emerald-500" />
+                    <Image 
+                      src="https://app.mmt.finance/assets/images/momentum-logo-sq.svg"
+                      alt="Momentum Logo"
+                      width={16}
+                      height={16}
+                      className="rounded-sm"
+                    />
                     <span className="font-medium text-zinc-900 dark:text-zinc-100">
                       Momentum {momentumData && momentumData.raw && !momentumData.raw.error && momentumData.raw.length > 0 ? 
                         `$${formatNumber(momentumData.raw.reduce((sum: number, pos: any) => sum + pos.amount, 0))}` : 
@@ -894,7 +900,13 @@ export default function Home() {
                   className="w-full flex items-center justify-between p-3 bg-zinc-50 dark:bg-zinc-900 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
                 >
                   <div className="flex items-center gap-2">
-                    <LineChart className="h-4 w-4 text-blue-500" />
+                    <Image 
+                      src="https://bluefin.io/images/square.png"
+                      alt="Bluefin Logo"
+                      width={16}
+                      height={16}
+                      className="rounded-sm"
+                    />
                     <span className="font-medium text-zinc-900 dark:text-zinc-100">Bluefin</span>
                   </div>
                   {showBluefinPositions ? (
