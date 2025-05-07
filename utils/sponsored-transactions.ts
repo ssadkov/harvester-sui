@@ -288,8 +288,7 @@ export async function sendSponsoredTransaction(
     
     // Устанавливаем явный бюджет газа
     const txBytes = await txb.build({ 
-      client,
-      gasBudget: 20000000 // Явно указываем бюджет газа
+      client
     });
     
     console.log('Transaction built successfully, bytes length:', txBytes.length);
@@ -372,7 +371,8 @@ export async function sendSponsoredTransaction(
       console.error('Error executing transaction block:', error);
       
       // Пробуем альтернативный формат подписи - иногда это может помочь
-      if (error.message && error.message.includes('DataView') || error.message.includes('bounds')) {
+      if (error instanceof Error && 
+          (error.message.includes('DataView') || error.message.includes('bounds'))) {
         console.log('Trying alternative signature format...');
         
         // Пробуем декодировать base64, если это возможно

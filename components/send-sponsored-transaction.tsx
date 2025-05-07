@@ -76,7 +76,11 @@ export function SendSponsoredTransaction() {
 
       // Get signature from user's wallet
       const userSignature = await wallet.signTransaction({
-        transaction: prepResult.txBytes,
+        transaction: {
+          toJSON: async () => {
+            return Promise.resolve(Buffer.from(prepResult.txBytes).toString('base64'));
+          }
+        }
       });
 
       if (!userSignature) {
