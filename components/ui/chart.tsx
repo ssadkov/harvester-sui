@@ -1,4 +1,4 @@
-import { ReactNode } from "react"
+import { ReactElement } from "react"
 import { ResponsiveContainer } from "recharts"
 
 export type ChartConfig = Record<
@@ -10,7 +10,7 @@ export type ChartConfig = Record<
 >
 
 interface ChartContainerProps {
-  children: ReactNode
+  children: ReactElement
   config: ChartConfig
   className?: string
 }
@@ -28,8 +28,8 @@ export function ChartContainer({
 }
 
 interface ChartTooltipProps {
-  children: ReactNode
-  content?: ReactNode
+  children: ReactElement
+  content?: ReactElement
 }
 
 export function ChartTooltip({ children, content }: ChartTooltipProps) {
