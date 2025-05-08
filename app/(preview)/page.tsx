@@ -1,6 +1,6 @@
 "use client";
 
-import { ReactNode, useRef, useState, useEffect } from "react";
+import { ReactNode, useRef, useState, useEffect, useMemo } from "react";
 import { useActions } from "ai/rsc";
 import { Message } from "@/components/message";
 import { useScrollToBottom } from "@/components/use-scroll-to-bottom";
@@ -417,6 +417,23 @@ export default function Home() {
   const toggleAssetPanel = () => {
     setShowAssetPanel(!showAssetPanel);
   };
+
+  // Итоговая сумма всех активов (кошелёк + протоколы)
+  const totalAssets = useMemo(() => {
+    let sum = totalTokenValue;
+    // Scallop
+    if (scallopData) {
+      sum +=
+        parseFloat(scallopData.totalSupplyValue || "0") +
+        parseFloat(scallopData.totalCollateralValue || "0") +
+        parseFloat(scallopData.totalLockedScaValue || "0");
+    }
+    // Momentum
+    if (momentumData && momentumData.raw && Array.isArray(momentumData.raw)) {
+      sum += momentumData.raw.reduce((acc: number, pos: any) => acc + (pos.amount || 0), 0);
+    }
+    return sum;
+  }, [totalTokenValue, scallopData, momentumData]);
 
   return (
     <div className="flex flex-row justify-between h-dvh bg-white dark:bg-zinc-900">
@@ -964,20 +981,18 @@ export default function Home() {
       <div className="flex flex-col justify-between gap-4 flex-grow pb-20 relative">
         {/* Мобильный блок статуса кошелька и суммы */}
         {isMobileView && (
-          <div className="fixed top-4 right-4 z-50 bg-white/90 dark:bg-zinc-900/90 rounded-xl shadow-lg px-4 py-2 flex flex-col items-end gap-1 border border-zinc-200 dark:border-zinc-700">
-            <div className="flex items-center gap-2">
-              <Wallet className="h-4 w-4 text-emerald-500" />
-              {wallet.connected && wallet.account ? (
-                <span className="text-xs font-medium text-zinc-700 dark:text-zinc-200">
-                  {wallet.account.address.substring(0, 6)}...{wallet.account.address.substring(wallet.account.address.length - 4)}
-                </span>
-              ) : (
-                <span className="text-xs text-zinc-500 dark:text-zinc-400">Not connected</span>
-              )}
-            </div>
-            <div className="text-xs text-zinc-700 dark:text-zinc-200 font-semibold">
-              Total: ${formatNumber(totalTokenValue)}
-            </div>
+          <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50 bg-white/90 dark:bg-zinc-900/90 rounded-xl shadow-lg h-10 px-4 flex items-center gap-3 border border-zinc-200 dark:border-zinc-700">
+            <Wallet className="h-4 w-4 text-emerald-500" />
+            {wallet.connected && wallet.account ? (
+              <span className="text-xs font-medium text-zinc-700 dark:text-zinc-200">
+                {wallet.account.address.substring(0, 6)}...{wallet.account.address.substring(wallet.account.address.length - 4)}
+              </span>
+            ) : (
+              <span className="text-xs text-zinc-500 dark:text-zinc-400">Not connected</span>
+            )}
+            <span className="text-xs text-zinc-700 dark:text-zinc-200 font-semibold">
+              ${formatNumber(totalAssets)}
+            </span>
           </div>
         )}
         <div
