@@ -3,9 +3,11 @@
 import { useState, useEffect } from 'react';
 import { useWallet } from '@suiet/wallet-kit';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Wallet } from 'lucide-react';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
+import { Wallet, TrendingUp } from 'lucide-react';
 import Image from 'next/image';
+import { PieChart, Pie, Tooltip } from 'recharts';
+import { formatTokenBalance, formatUSDValue } from '@/app/utils/format';
 
 interface Token {
   coinType: string;
@@ -25,11 +27,19 @@ interface TokenData {
   [key: string]: Token;
 }
 
+interface TokenBalance {
+  symbol: string;
+  balance: string;
+  decimals: number;
+  value: number;
+}
+
 export default function ApiDataPage() {
   const wallet = useWallet();
   const [apiData, setApiData] = useState<TokenData | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [tokenBalances, setTokenBalances] = useState<TokenBalance[]>([]);
 
   const fetchData = async () => {
     if (!wallet.connected || !wallet.account) return;
@@ -62,6 +72,33 @@ export default function ApiDataPage() {
     }
   }, [wallet.connected, wallet.account]);
 
+  useEffect(() => {
+    const fetchBalances = async () => {
+      if (!wallet.connected || !wallet.account || !apiData) return;
+      
+      setIsLoading(true);
+      try {
+        const balances = Object.values(apiData)
+          .filter(token => parseFloat(token.usdPrice || '0') > 0)
+          .map(token => ({
+            symbol: token.symbol,
+            balance: token.balance,
+            decimals: token.decimals,
+            value: parseFloat(token.usdPrice || '0'),
+          }));
+        setTokenBalances(balances);
+      } catch (error) {
+        console.error('Error processing balances:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    if (apiData) {
+      fetchBalances();
+    }
+  }, [wallet.connected, wallet.account, apiData]);
+
   const formatNumber = (num: string | number) => {
     const n = typeof num === 'string' ? parseFloat(num) : num;
     if (n === 0) return '0';
@@ -80,6 +117,60 @@ export default function ApiDataPage() {
       minimumFractionDigits: 2,
       maximumFractionDigits: 2
     }).format(n);
+  };
+
+  // Считаем общую сумму
+  const totalValue = tokenBalances.reduce((sum, t) => sum + t.value, 0);
+
+  // Фильтруем токены >10%, остальные в 'Others'
+  const mainTokens = tokenBalances.filter(t => t.value / totalValue > 0.1);
+  const othersTokens = tokenBalances.filter(t => t.value / totalValue <= 0.1);
+  const othersValue = othersTokens.reduce((sum, t) => sum + t.value, 0);
+
+  // Sapphire цвета для секторов
+  const sapphireColors = [
+    'hsl(221.2, 83.2%, 53.3%)', // chart-1
+    'hsl(212, 95%, 68%)',      // chart-2
+    'hsl(216, 92%, 60%)',      // chart-3
+    'hsl(210, 98%, 78%)',      // chart-4
+    'hsl(212, 97%, 87%)',      // chart-5
+  ];
+
+  const chartData = [
+    ...mainTokens.map((token, index) => ({
+      symbol: token.symbol,
+      value: token.value,
+      fill: sapphireColors[index % sapphireColors.length],
+      decimals: token.decimals,
+      balance: token.balance,
+    })),
+    ...(othersValue > 0
+      ? [{ symbol: 'Others', value: othersValue, fill: sapphireColors[4], decimals: 0, balance: '0' }]
+      : []),
+  ];
+
+  // Подписи с тикером и процентом
+  const renderLabel = ({ symbol, percent }: any) => {
+    if (percent < 0.05) return null;
+    return `${symbol}: ${(percent * 100).toFixed(0)}%`;
+  };
+
+  const CustomTooltip = ({ active, payload }: any) => {
+    if (active && payload && payload.length) {
+      const t = payload[0].payload;
+      return (
+        <div className="bg-background border rounded-lg p-2 shadow-lg">
+          <p className="text-sm font-medium">{t.symbol}</p>
+          <p className="text-sm text-muted-foreground">
+            {formatUSDValue(t.value)}
+          </p>
+          <p className="text-xs text-zinc-500">
+            {formatTokenBalance(t.balance, t.decimals)} {t.symbol}
+          </p>
+        </div>
+      );
+    }
+    return null;
   };
 
   return (
@@ -135,6 +226,44 @@ export default function ApiDataPage() {
                   {isLoading ? 'Refreshing...' : 'Refresh Tokens'}
                 </Button>
               </div>
+              
+              {/* Круговая диаграмма */}
+              {tokenBalances.length > 0 && (
+                <Card className="flex flex-col mt-4">
+                  <CardHeader className="items-center pb-0">
+                    <CardTitle>Wallet Balance Distribution</CardTitle>
+                    <CardDescription>Current token balances in USD</CardDescription>
+                  </CardHeader>
+                  <CardContent className="flex-1 pb-0">
+                    <div className="mx-auto aspect-square max-h-[250px]">
+                      <PieChart width={250} height={250}>
+                        <Tooltip content={<CustomTooltip />} />
+                        <Pie
+                          data={chartData}
+                          dataKey="value"
+                          nameKey="symbol"
+                          cx="50%"
+                          cy="50%"
+                          outerRadius={80}
+                          paddingAngle={4}
+                          label={renderLabel}
+                          labelLine={true}
+                        />
+                      </PieChart>
+                    </div>
+                  </CardContent>
+                  <CardFooter className="flex-col gap-2 text-sm">
+                    <div className="flex items-center gap-2 font-medium leading-none">
+                      Total Value: ${chartData.reduce((sum, item) => sum + item.value, 0).toFixed(2)}
+                    </div>
+                    <div className="leading-none text-muted-foreground">
+                      Showing tokens with non-zero balance
+                    </div>
+                  </CardFooter>
+                </Card>
+              )}
+
+              {/* Список токенов */}
               <div className="grid gap-4">
                 {Object.entries(apiData).map(([key, token]) => (
                   <Card key={key} className="p-4">
@@ -145,27 +274,32 @@ export default function ApiDataPage() {
                             <Image
                               src={token.iconUrl}
                               alt={token.symbol}
-                              fill
-                              className="object-contain"
+                              width={40}
+                              height={40}
+                              className="object-cover"
                             />
                           </div>
                         ) : (
                           <div className="w-10 h-10 rounded-full bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center">
-                            <span className="text-lg font-medium text-zinc-500">
+                            <span className="text-lg font-medium text-zinc-600 dark:text-zinc-400">
                               {token.symbol[0]}
                             </span>
                           </div>
                         )}
                         <div>
-                          <h3 className="font-medium">{token.name}</h3>
-                          <p className="text-sm text-zinc-500 dark:text-zinc-400">{token.symbol}</p>
+                          <h3 className="font-medium">{token.symbol}</h3>
+                          <p className="text-sm text-zinc-500 dark:text-zinc-400">
+                            {formatNumber(token.balance)} {token.symbol}
+                          </p>
                         </div>
                       </div>
                       <div className="text-right">
-                        <p className="font-medium">{formatNumber(token.balance)} {token.symbol}</p>
+                        <p className="font-medium">
+                          {token.usdPrice ? formatUSD(parseFloat(token.balance) * parseFloat(token.usdPrice)) : '-'}
+                        </p>
                         {token.usdPrice && (
                           <p className="text-sm text-zinc-500 dark:text-zinc-400">
-                            {formatUSD(token.usdPrice)}
+                            ${formatNumber(token.usdPrice)}
                           </p>
                         )}
                       </div>
@@ -174,11 +308,7 @@ export default function ApiDataPage() {
                 ))}
               </div>
             </div>
-          ) : (
-            <div className="text-center py-8">
-              <p className="text-zinc-500 dark:text-zinc-400">No tokens found</p>
-            </div>
-          )}
+          ) : null}
         </CardContent>
       </Card>
     </div>
