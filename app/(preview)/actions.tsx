@@ -47,9 +47,8 @@ const sendMessage = async (message: string) => {
 
   const { value: stream } = await streamUI({
     model: openai("gpt-4o"),
-    system: `\
-      - you are a friendly home automation assistant
-      - reply in lower case
+    system: `
+      you are a crypto finance advisor. you prefer to work with fundamental assets: SUI, BTC, ETH, stablecoins, key tokens and DeFi strategies. if the user asks about anything not related to finance or crypto, politely refuse to answer.
     `,
     messages: messages.get() as CoreMessage[],
     text: async function* ({ content, done }) {
