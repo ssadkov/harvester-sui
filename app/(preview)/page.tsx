@@ -420,15 +420,26 @@ export default function Home() {
 
   return (
     <div className="flex flex-row justify-between h-dvh bg-white dark:bg-zinc-900">
-      {/* Asset panel - collapsible on mobile */}
+      {/* Overlay для мобильного drawer */}
+      {isMobileView && showAssetPanel && (
+        <div
+          className="fixed inset-0 z-40 bg-black/40"
+          onClick={() => setShowAssetPanel(false)}
+        />
+      )}
+      {/* Asset panel - mobile drawer/fullscreen + desktop sidebar */}
       <AnimatePresence>
         {showAssetPanel && (
-          <motion.div 
-            initial={{ width: 0, opacity: 0 }}
-            animate={{ width: isMobileView ? "95%" : "450px", opacity: 1 }}
-            exit={{ width: 0, opacity: 0 }}
+          <motion.div
+            initial={{ x: isMobileView ? '-100%' : 0, opacity: 0 }}
+            animate={{ x: 0, opacity: 1 }}
+            exit={{ x: isMobileView ? '-100%' : 0, opacity: 0 }}
             transition={{ duration: 0.3 }}
-            className="border-r border-zinc-200 dark:border-zinc-700 h-full max-h-screen overflow-y-auto bg-white dark:bg-zinc-800 z-10"
+            className={
+              isMobileView
+                ? "fixed top-0 left-0 w-full h-full z-50 bg-white dark:bg-zinc-800 border-r border-zinc-200 dark:border-zinc-700 overflow-y-auto"
+                : "border-r border-zinc-200 dark:border-zinc-700 h-full max-h-screen overflow-y-auto bg-white dark:bg-zinc-800 z-10"
+            }
           >
             <div className="p-4">
               {/* Header with wallet info */}
@@ -437,7 +448,7 @@ export default function Home() {
                 <Button
                   variant="ghost"
                   size="sm"
-                  onClick={toggleAssetPanel}
+                  onClick={() => setShowAssetPanel(false)}
                   className="md:hidden"
                 >
                   <ChevronRight className="h-4 w-4" />
@@ -939,19 +950,36 @@ export default function Home() {
           </motion.div>
         )}
       </AnimatePresence>
-      
       {/* Mobile toggle button for asset panel */}
       {isMobileView && !showAssetPanel && (
-        <button 
-          onClick={toggleAssetPanel}
-          className="fixed top-4 left-4 z-30 bg-white dark:bg-zinc-800 shadow-md rounded-md p-2"
+        <button
+          onClick={() => setShowAssetPanel(true)}
+          className="fixed top-4 left-4 z-50 bg-white dark:bg-zinc-800 shadow-md rounded-md p-2"
         >
-          <ChevronRight className="h-5 w-5 text-zinc-700 dark:text-zinc-300" />
+          <Menu className="h-5 w-5 text-zinc-700 dark:text-zinc-300" />
         </button>
       )}
       
       {/* Main content area */}
       <div className="flex flex-col justify-between gap-4 flex-grow pb-20 relative">
+        {/* Мобильный блок статуса кошелька и суммы */}
+        {isMobileView && (
+          <div className="fixed top-4 right-4 z-50 bg-white/90 dark:bg-zinc-900/90 rounded-xl shadow-lg px-4 py-2 flex flex-col items-end gap-1 border border-zinc-200 dark:border-zinc-700">
+            <div className="flex items-center gap-2">
+              <Wallet className="h-4 w-4 text-emerald-500" />
+              {wallet.connected && wallet.account ? (
+                <span className="text-xs font-medium text-zinc-700 dark:text-zinc-200">
+                  {wallet.account.address.substring(0, 6)}...{wallet.account.address.substring(wallet.account.address.length - 4)}
+                </span>
+              ) : (
+                <span className="text-xs text-zinc-500 dark:text-zinc-400">Not connected</span>
+              )}
+            </div>
+            <div className="text-xs text-zinc-700 dark:text-zinc-200 font-semibold">
+              Total: ${formatNumber(totalTokenValue)}
+            </div>
+          </div>
+        )}
         <div
           ref={messagesContainerRef}
           className="flex flex-col gap-3 h-full w-full items-center overflow-y-scroll px-4"
