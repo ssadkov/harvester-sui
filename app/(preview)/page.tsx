@@ -21,6 +21,7 @@ import { formatTokenBalance, formatUSDValue } from '@/app/utils/format';
 import { fetchScallopBalance, fetchMomentumBalance } from '@/app/actions/balance-actions';
 import ReactMarkdown from 'react-markdown';
 import Image from "next/image";
+import { PieChartAssets } from '@/components/PieChartAssets';
 
 // Define Momentum position interface
 interface MomentumPosition {
@@ -242,11 +243,11 @@ export default function Home() {
     }
   };
 
-  // Обновляем предлагаемые действия, добавив опцию проверки баланса Momentum
+  // Обновляем предлагаемые действия
   const suggestedActions = [
     { title: "Check", label: "Scallop Balance", action: "check-scallop-balance" },
     { title: "Check", label: "Momentum Balance", action: "check-momentum-balance" },
-    { title: "Show me", label: "my smart home hub", action: "Show me my smart home hub" },
+    { title: "Show me", label: "Pie chart of my assets", action: "show-assets-pie-chart" },
     {
       title: "How much",
       label: "electricity have I used this month?",
@@ -388,6 +389,22 @@ export default function Home() {
   const handleActionClick = async (action: string) => {
     setShowActionButtons(false);
     
+    // Обработка специального действия для Pie chart
+    if (action === "show-assets-pie-chart") {
+      if (wallet.connected && userTokens.length > 0) {
+        setMessages((messages) => [
+          ...messages,
+          <Message key={messages.length} role="assistant" content={<PieChartAssets tokenBalances={userTokens.map(t => ({ symbol: t.symbol, balance: t.balance, decimals: t.decimals, value: parseFloat(t.usdPrice || '0') }))} />} />
+        ]);
+      } else {
+        setMessages((messages) => [
+          ...messages,
+          <Message key={messages.length} role="assistant" content={"Please connect your wallet to view the pie chart."} />
+        ]);
+      }
+      return;
+    }
+    
     // Обработка специального действия для проверки баланса Scallop
     if (action === "check-scallop-balance") {
       await sendScallopBalanceToChat();
@@ -434,6 +451,15 @@ export default function Home() {
     }
     return sum;
   }, [totalTokenValue, scallopData, momentumData]);
+
+  // Функция для дисконнекта и сброса данных
+  const handleDisconnect = () => {
+    wallet.disconnect();
+    setUserTokens([]);
+    setScallopData(null);
+    setMomentumData(null);
+    setTotalTokenValue(0);
+  };
 
   return (
     <div className="flex flex-row justify-between h-dvh bg-white dark:bg-zinc-900">
@@ -486,7 +512,7 @@ export default function Home() {
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={() => wallet.disconnect()}
+                      onClick={handleDisconnect}
                       className="ml-2"
                     >
                       Disconnect
@@ -496,10 +522,10 @@ export default function Home() {
                   <div className="flex flex-col gap-2">
                     <div className="flex items-center gap-2 text-sm">
                       <Wallet className="h-4 w-4 text-zinc-400" />
-                      <span className="text-zinc-500 dark:text-zinc-400">Not connected</span>
+                      <span className="text-zinc-500 dark:text-zinc-400">Connect wallet to see list of assets</span>
                     </div>
                     <div className="mt-1">
-                      <ConnectButton className="w-full text-sm !py-1" />
+                      <ConnectButton label="Connect SUI wallet" />
                     </div>
                   </div>
                 )}
@@ -988,11 +1014,13 @@ export default function Home() {
                 {wallet.account.address.substring(0, 6)}...{wallet.account.address.substring(wallet.account.address.length - 4)}
               </span>
             ) : (
-              <span className="text-xs text-zinc-500 dark:text-zinc-400">Not connected</span>
+              <ConnectButton label="Connect SUI wallet" />
             )}
-            <span className="text-xs text-zinc-700 dark:text-zinc-200 font-semibold">
-              ${formatNumber(totalAssets)}
-            </span>
+            {wallet.connected && wallet.account && (
+              <span className="text-xs text-zinc-700 dark:text-zinc-200 font-semibold">
+                ${formatNumber(totalAssets)}
+              </span>
+            )}
           </div>
         )}
         <div
