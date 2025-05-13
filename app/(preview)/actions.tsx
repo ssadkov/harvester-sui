@@ -12,6 +12,7 @@ import { z } from "zod";
 import { CameraView } from "@/components/camera-view";
 import { HubView } from "@/components/hub-view";
 import { UsageView } from "@/components/usage-view";
+import { poolTools } from "@/app/actions/pool-actions";
 
 export interface Hub {
   climate: Record<"low" | "high", number>;
@@ -66,6 +67,7 @@ const sendMessage = async (message: string) => {
       return textComponent;
     },
     tools: {
+      ...poolTools,
       viewCameras: {
         description: "view current active cameras",
         parameters: z.object({}),
