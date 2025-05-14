@@ -22,6 +22,7 @@ import { fetchScallopBalance, fetchMomentumBalance } from '@/app/actions/balance
 import ReactMarkdown from 'react-markdown';
 import Image from "next/image";
 import { PieChartAssets } from '@/components/PieChartAssets';
+import { ProtocolPieChart } from '@/components/ProtocolPieChart';
 
 // Define Momentum position interface
 interface MomentumPosition {
@@ -404,6 +405,45 @@ export default function Home() {
       return;
     }
     
+    // Обработка специального действия для Protocol Pie chart
+    if (action === "show-protocols-pie-chart") {
+      if (wallet.connected) {
+        const protocolBalances = [
+          scallopData ? (
+            parseFloat(scallopData.totalSupplyValue || "0") +
+            parseFloat(scallopData.totalCollateralValue || "0") +
+            parseFloat(scallopData.totalLockedScaValue || "0")
+          ) : 0,
+          momentumData && momentumData.raw && !momentumData.raw.error ?
+            momentumData.raw.reduce((sum: number, pos: any) => sum + (pos.amount || 0), 0) : 0,
+          0 // Bluefin
+        ];
+        const hasNonZero = protocolBalances.some(v => v > 0);
+        if (!hasNonZero) return;
+        setMessages((messages) => [
+          ...messages,
+          <Message key={messages.length} role="assistant" content={<ProtocolPieChart protocolBalances={[
+            { protocol: 'Wallet', value: totalTokenValue },
+            { protocol: 'Scallop', value: scallopData ? 
+              parseFloat(scallopData.totalSupplyValue || "0") +
+              parseFloat(scallopData.totalCollateralValue || "0") +
+              parseFloat(scallopData.totalLockedScaValue || "0") : 0
+            },
+            { protocol: 'Momentum', value: momentumData && momentumData.raw && !momentumData.raw.error ? 
+              momentumData.raw.reduce((sum: number, pos: any) => sum + (pos.amount || 0), 0) : 0
+            },
+            { protocol: 'Bluefin', value: 0 }
+          ]} />} />
+        ]);
+      } else {
+        setMessages((messages) => [
+          ...messages,
+          <Message key={messages.length} role="assistant" content={"Please connect your wallet to view the protocols distribution."} />
+        ]);
+      }
+      return;
+    }
+    
     // Обработка специального действия для проверки баланса Scallop
     if (action === "check-scallop-balance") {
       await sendScallopBalanceToChat();
@@ -503,7 +543,7 @@ export default function Home() {
                 <div className="flex items-center gap-2">
                   <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">My Assets</h2>
                   {wallet.connected && (
-                    <span className="text-lg font-bold text-zinc-900 dark:text-zinc-100">${formatNumber(totalAssets)}</span>
+                    <span className="text-lg font-bold text-zinc-900 dark:text-zinc-100">${Number(totalAssets).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                   )}
                   <button
                     onClick={() => fetchUserAssets()}
@@ -518,14 +558,55 @@ export default function Home() {
                     </svg>
                   </button>
                 </div>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setShowAssetPanel(false)}
-                  className="md:hidden"
-                >
-                  <ChevronRight className="h-4 w-4" />
-                </Button>
+                <div className="flex items-center gap-2">
+                  {wallet.connected && (() => {
+                    const protocolBalances = [
+                      scallopData ? (
+                        parseFloat(scallopData.totalSupplyValue || "0") +
+                        parseFloat(scallopData.totalCollateralValue || "0") +
+                        parseFloat(scallopData.totalLockedScaValue || "0")
+                      ) : 0,
+                      momentumData && momentumData.raw && !momentumData.raw.error ?
+                        momentumData.raw.reduce((sum: number, pos: any) => sum + (pos.amount || 0), 0) : 0,
+                      0 // Bluefin
+                    ];
+                    const hasNonZero = protocolBalances.some(v => v > 0);
+                    if (!hasNonZero) return null;
+                    return (
+                      <button
+                        onClick={() => {
+                          setMessages((messages) => [
+                            ...messages,
+                            <Message key={messages.length} role="assistant" content={<ProtocolPieChart protocolBalances={[
+                              { protocol: 'Wallet', value: totalTokenValue },
+                              { protocol: 'Scallop', value: scallopData ? 
+                                parseFloat(scallopData.totalSupplyValue || "0") +
+                                parseFloat(scallopData.totalCollateralValue || "0") +
+                                parseFloat(scallopData.totalLockedScaValue || "0") : 0
+                              },
+                              { protocol: 'Momentum', value: momentumData && momentumData.raw && !momentumData.raw.error ? 
+                                momentumData.raw.reduce((sum: number, pos: any) => sum + (pos.amount || 0), 0) : 0
+                              },
+                              { protocol: 'Bluefin', value: 0 }
+                            ]} />} />
+                          ]);
+                        }}
+                        className="p-1 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded transition-colors"
+                        title="Show protocols distribution"
+                      >
+                        <PieChart className="w-4 h-4 text-zinc-400" />
+                      </button>
+                    );
+                  })()}
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setShowAssetPanel(false)}
+                    className="md:hidden"
+                  >
+                    <ChevronRight className="h-4 w-4" />
+                  </Button>
+                </div>
               </div>
               
               {/* Wallet connection status */}

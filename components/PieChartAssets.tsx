@@ -76,8 +76,8 @@ export function PieChartAssets({ tokenBalances }: PieChartAssetsProps) {
     return null;
   };
   return (
-    <div className="mx-auto aspect-square max-h-[350px] min-w-[320px]">
-      <PieChart width={320} height={320}>
+    <div className="mx-auto aspect-square max-h-[400px] min-w-[400px]">
+      <PieChart width={400} height={400}>
         <Tooltip content={<CustomTooltip />} />
         <Pie
           data={chartData}
@@ -85,7 +85,7 @@ export function PieChartAssets({ tokenBalances }: PieChartAssetsProps) {
           nameKey="symbol"
           cx="50%"
           cy="50%"
-          outerRadius={110}
+          outerRadius={140}
           paddingAngle={4}
           label={renderLabel}
           labelLine={true}
