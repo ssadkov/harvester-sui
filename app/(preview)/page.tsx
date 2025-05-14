@@ -467,6 +467,13 @@ export default function Home() {
     }
   }, []);
 
+  // Автопрокрутка вниз при новых сообщениях или открытии меню
+  useEffect(() => {
+    if (messagesEndRef.current) {
+      messagesEndRef.current.scrollIntoView({ behavior: "smooth" });
+    }
+  }, [messages, showActionButtons]);
+
   return (
     <div className="flex flex-row justify-between h-dvh bg-white dark:bg-zinc-900">
       {/* Overlay для мобильного drawer */}
@@ -1103,14 +1110,15 @@ export default function Home() {
               </div>
             </motion.div>
           )}
-          {/* ВСТАВЛЯЕМ МЕНЮ СРАЗУ ПОД ПРИВЕТСТВЕННЫМ БЛОКОМ */}
+          {messages.map((message) => message)}
+          <div ref={messagesEndRef} />
           <AnimatePresence>
             {showActionButtons && (
               <motion.div 
                 initial={{ opacity: 0, scale: 0.9 }}
                 animate={{ opacity: 1, scale: 1 }}
                 exit={{ opacity: 0, scale: 0.9 }}
-                className="w-full md:w-[500px] mx-auto mt-8"
+                className="w-full md:w-[500px] mx-auto mb-4"
               >
                 <div className="bg-white dark:bg-zinc-800 rounded-xl shadow-lg p-6 grid grid-cols-2 gap-4">
                   {suggestedActions.map((action, index) => (
@@ -1130,9 +1138,6 @@ export default function Home() {
               </motion.div>
             )}
           </AnimatePresence>
-          {/* КОНЕЦ ВСТАВКИ МЕНЮ */}
-          {messages.map((message) => message)}
-          <div ref={messagesEndRef} />
         </div>
 
         <form
