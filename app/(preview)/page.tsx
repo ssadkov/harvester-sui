@@ -8,7 +8,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { MasonryIcon, VercelIcon } from "@/components/icons";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { SendHorizonal, Menu, DollarSign, ChevronRight, ChevronDown, Wallet, CreditCard, Disc, LineChart } from "lucide-react";
+import { SendHorizonal, Menu, DollarSign, ChevronRight, ChevronDown, Wallet, CreditCard, Disc, LineChart, PieChart } from "lucide-react";
 import { ConnectButton, useWallet } from '@suiet/wallet-kit';
 import { 
   fetchTokenBalances, 
@@ -502,7 +502,9 @@ export default function Home() {
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-2">
                   <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">My Assets</h2>
-                  <span className="text-lg font-bold text-zinc-900 dark:text-zinc-100">${formatNumber(totalAssets)}</span>
+                  {wallet.connected && (
+                    <span className="text-lg font-bold text-zinc-900 dark:text-zinc-100">${formatNumber(totalAssets)}</span>
+                  )}
                   <button
                     onClick={() => fetchUserAssets()}
                     className="p-1 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded transition-colors"
@@ -561,21 +563,37 @@ export default function Home() {
               
               {/* Tokens section */}
               <div className="mb-4 border border-zinc-200 dark:border-zinc-700 rounded-lg overflow-hidden">
-                <div className="flex items-center justify-between p-3 bg-zinc-50 dark:bg-zinc-900">
-                  <button 
-                    onClick={() => setShowTokens(!showTokens)}
-                    className="flex items-center gap-2 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors rounded px-2 py-1"
-                  >
-                    <CreditCard className="h-4 w-4 text-blue-500" />
-                    <span className="font-medium text-zinc-900 dark:text-zinc-100">
-                      Wallet ${formatNumber(totalTokenValue)}
-                    </span>
-                    {showTokens ? (
-                      <ChevronDown className="h-4 w-4 text-zinc-500" />
-                    ) : (
-                      <ChevronRight className="h-4 w-4 text-zinc-500" />
-                    )}
-                  </button>
+                <div className="flex flex-row items-center justify-between p-3 bg-zinc-50 dark:bg-zinc-900">
+                  <div className="flex-1">
+                    <button
+                      onClick={() => setShowTokens(!showTokens)}
+                      className="flex items-center gap-2 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors rounded px-2 py-1"
+                    >
+                      <CreditCard className="h-4 w-4 text-blue-500" />
+                      <span className="font-medium text-zinc-900 dark:text-zinc-100">
+                        Wallet {wallet.connected ? `$${formatNumber(totalTokenValue)}` : ''}
+                      </span>
+                      {showTokens ? (
+                        <ChevronDown className="h-4 w-4 text-zinc-500" />
+                      ) : (
+                        <ChevronRight className="h-4 w-4 text-zinc-500" />
+                      )}
+                    </button>
+                  </div>
+                  {userTokens.length > 0 && (
+                    <button
+                      onClick={() => {
+                        setMessages((messages) => [
+                          ...messages,
+                          <Message key={messages.length} role="assistant" content={<PieChartAssets tokenBalances={userTokens.map(t => ({ symbol: t.symbol, balance: t.balance, decimals: t.decimals, value: parseFloat(t.usdPrice || '0') }))} />} />
+                        ]);
+                      }}
+                      className="p-1 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded transition-colors ml-2"
+                      title="Show pie chart of assets"
+                    >
+                      <PieChart className="w-4 h-4 text-zinc-400" />
+                    </button>
+                  )}
                 </div>
                 
                 {showTokens && (
