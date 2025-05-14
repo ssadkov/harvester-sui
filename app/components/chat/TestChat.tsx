@@ -37,28 +37,6 @@ export default function TestChat() {
     return <div>{JSON.stringify(result)}</div>;
   };
 
-  const renderToolState = (state: string, toolName: string) => {
-    console.log('Tool state:', state, toolName);
-    switch (state) {
-      case 'partial-call':
-        return (
-          <div className="text-sm text-gray-500">
-            Подготовка к вызову инструмента {toolName}...
-          </div>
-        );
-      case 'call':
-        return (
-          <div className="text-sm text-gray-500">
-            Выполняется {toolName}...
-          </div>
-        );
-      case 'result':
-        return null;
-      default:
-        return <div className="text-sm text-gray-500">Неизвестное состояние: {state}</div>;
-    }
-  };
-
   return (
     <div className="flex flex-col gap-4 p-4">
       <div className="flex-1">
@@ -67,22 +45,27 @@ export default function TestChat() {
           return (
             <div key={message.id} className="mb-4">
               <div className="font-bold">{message.role}:</div>
-              {message.content}
               {message.parts?.map((part, index) => {
                 console.log('Message part:', part);
-                if (part.type === 'tool-invocation') {
-                  return (
-                    <div key={index} className="mt-2">
-                      {renderToolState(part.toolInvocation.state, part.toolInvocation.toolName)}
-                      {part.toolInvocation.state === 'result' && (
-                        <div className="mt-2">
-                          {renderToolResult(part.toolInvocation.result)}
+                switch (part.type) {
+                  case 'text':
+                    return <div key={index}>{part.text}</div>;
+                  case 'tool-invocation':
+                    return (
+                      <div key={index} className="mt-2">
+                        <div className="text-sm text-gray-500">
+                          {part.toolInvocation.state === 'partial-call' && 
+                            `Подготовка к вызову инструмента ${part.toolInvocation.toolName}...`}
+                          {part.toolInvocation.state === 'call' && 
+                            `Выполняется ${part.toolInvocation.toolName}...`}
+                          {part.toolInvocation.state === 'result' && 
+                            renderToolResult(part.toolInvocation.result)}
                         </div>
-                      )}
-                    </div>
-                  );
+                      </div>
+                    );
+                  default:
+                    return null;
                 }
-                return null;
               })}
             </div>
           );
