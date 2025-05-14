@@ -533,22 +533,34 @@ export default function Home() {
               
               {/* Tokens section */}
               <div className="mb-4 border border-zinc-200 dark:border-zinc-700 rounded-lg overflow-hidden">
-                <button 
-                  onClick={() => setShowTokens(!showTokens)}
-                  className="w-full flex items-center justify-between p-3 bg-zinc-50 dark:bg-zinc-900 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
-                >
-                  <div className="flex items-center gap-2">
+                <div className="flex items-center justify-between p-3 bg-zinc-50 dark:bg-zinc-900">
+                  <button 
+                    onClick={() => setShowTokens(!showTokens)}
+                    className="flex items-center gap-2 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors rounded px-2 py-1"
+                  >
                     <CreditCard className="h-4 w-4 text-blue-500" />
                     <span className="font-medium text-zinc-900 dark:text-zinc-100">
                       Wallet ${formatNumber(totalTokenValue)}
                     </span>
-                  </div>
-                  {showTokens ? (
-                    <ChevronDown className="h-4 w-4 text-zinc-500" />
-                  ) : (
-                    <ChevronRight className="h-4 w-4 text-zinc-500" />
-                  )}
-                </button>
+                    {showTokens ? (
+                      <ChevronDown className="h-4 w-4 text-zinc-500" />
+                    ) : (
+                      <ChevronRight className="h-4 w-4 text-zinc-500" />
+                    )}
+                  </button>
+                  <button
+                    onClick={() => fetchUserAssets()}
+                    className="p-1 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded transition-colors"
+                    title="Refresh wallet balance"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-zinc-500">
+                      <path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/>
+                      <path d="M3 3v5h5"/>
+                      <path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16"/>
+                      <path d="M16 21h5v-5"/>
+                    </svg>
+                  </button>
+                </div>
                 
                 {showTokens && (
                   <div className="p-3">
@@ -613,32 +625,62 @@ export default function Home() {
               
               {/* Scallop section */}
               <div className="mb-4 border border-zinc-200 dark:border-zinc-700 rounded-lg overflow-hidden">
-                <button 
-                  onClick={() => setShowScallopPositions(!showScallopPositions)}
-                  className="w-full flex items-center justify-between p-3 bg-zinc-50 dark:bg-zinc-900 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
-                >
-                  <div className="flex items-center gap-2">
-                    <div className="h-5 w-5 relative flex items-center justify-center">
-                      <img 
-                        src="https://app.scallop.io/images/logo-192.png"
-                        alt="Scallop logo"
-                        width={20} 
-                        height={20}
-                        className="object-contain"
-                      />
-                    </div>
+                <div className="flex items-center justify-between p-3 bg-zinc-50 dark:bg-zinc-900">
+                  <button 
+                    onClick={() => setShowScallopPositions(!showScallopPositions)}
+                    className="flex items-center gap-2 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors rounded px-2 py-1"
+                  >
+                    <Image 
+                      src="https://app.scallop.io/images/logo-192.png"
+                      alt="Scallop Logo"
+                      width={16}
+                      height={16}
+                      className="rounded-sm"
+                    />
                     <span className="font-medium text-zinc-900 dark:text-zinc-100">
-                      Scallop ${formatNumber(parseFloat(scallopData?.totalSupplyValue || "0") + 
-                                     parseFloat(scallopData?.totalCollateralValue || "0") + 
-                                     parseFloat(scallopData?.totalLockedScaValue || "0"))}
+                      Scallop {scallopData ? 
+                        `$${formatNumber(
+                          parseFloat(scallopData.totalSupplyValue || "0") +
+                          parseFloat(scallopData.totalCollateralValue || "0") +
+                          parseFloat(scallopData.totalLockedScaValue || "0")
+                        )}` : 
+                        ''
+                      }
                     </span>
+                    {showScallopPositions ? (
+                      <ChevronDown className="h-4 w-4 text-zinc-500" />
+                    ) : (
+                      <ChevronRight className="h-4 w-4 text-zinc-500" />
+                    )}
+                  </button>
+                  <div className="flex items-center gap-2">
+                    <Link
+                      href="https://app.scallop.io/referral?ref=670e31ea50cc539a9a3e2f84"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="p-1 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded transition-colors"
+                      title="Open Scallop"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-zinc-500">
+                        <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
+                        <polyline points="15 3 21 3 21 9"/>
+                        <line x1="10" y1="14" x2="21" y2="3"/>
+                      </svg>
+                    </Link>
+                    <button
+                      onClick={() => fetchUserAssets()}
+                      className="p-1 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded transition-colors"
+                      title="Refresh Scallop balance"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-zinc-500">
+                        <path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/>
+                        <path d="M3 3v5h5"/>
+                        <path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16"/>
+                        <path d="M16 21h5v-5"/>
+                      </svg>
+                    </button>
                   </div>
-                  {showScallopPositions ? (
-                    <ChevronDown className="h-4 w-4 text-zinc-500" />
-                  ) : (
-                    <ChevronRight className="h-4 w-4 text-zinc-500" />
-                  )}
-                </button>
+                </div>
                 
                 {showScallopPositions && (
                   <div className="p-3">
@@ -864,11 +906,11 @@ export default function Home() {
               
               {/* Momentum section */}
               <div className="mb-4 border border-zinc-200 dark:border-zinc-700 rounded-lg overflow-hidden">
-                <button 
-                  onClick={() => setShowMomentumPositions(!showMomentumPositions)}
-                  className="w-full flex items-center justify-between p-3 bg-zinc-50 dark:bg-zinc-900 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
-                >
-                  <div className="flex items-center gap-2">
+                <div className="flex items-center justify-between p-3 bg-zinc-50 dark:bg-zinc-900">
+                  <button 
+                    onClick={() => setShowMomentumPositions(!showMomentumPositions)}
+                    className="flex items-center gap-2 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors rounded px-2 py-1"
+                  >
                     <Image 
                       src="https://app.mmt.finance/assets/images/momentum-logo-sq.svg"
                       alt="Momentum Logo"
@@ -882,13 +924,40 @@ export default function Home() {
                         ''
                       }
                     </span>
+                    {showMomentumPositions ? (
+                      <ChevronDown className="h-4 w-4 text-zinc-500" />
+                    ) : (
+                      <ChevronRight className="h-4 w-4 text-zinc-500" />
+                    )}
+                  </button>
+                  <div className="flex items-center gap-2">
+                    <Link
+                      href="https://app.mmt.finance/leaderboard?refer=8EQO6A"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="p-1 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded transition-colors"
+                      title="Open Momentum"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-zinc-500">
+                        <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
+                        <polyline points="15 3 21 3 21 9"/>
+                        <line x1="10" y1="14" x2="21" y2="3"/>
+                      </svg>
+                    </Link>
+                    <button
+                      onClick={() => fetchUserAssets()}
+                      className="p-1 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded transition-colors"
+                      title="Refresh Momentum balance"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-zinc-500">
+                        <path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/>
+                        <path d="M3 3v5h5"/>
+                        <path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16"/>
+                        <path d="M16 21h5v-5"/>
+                      </svg>
+                    </button>
                   </div>
-                  {showMomentumPositions ? (
-                    <ChevronDown className="h-4 w-4 text-zinc-500" />
-                  ) : (
-                    <ChevronRight className="h-4 w-4 text-zinc-500" />
-                  )}
-                </button>
+                </div>
                 
                 {showMomentumPositions && (
                   <div className="p-3">
@@ -949,11 +1018,11 @@ export default function Home() {
               
               {/* Bluefin section */}
               <div className="mb-4 border border-zinc-200 dark:border-zinc-700 rounded-lg overflow-hidden">
-                <button 
-                  onClick={() => setShowBluefinPositions(!showBluefinPositions)}
-                  className="w-full flex items-center justify-between p-3 bg-zinc-50 dark:bg-zinc-900 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
-                >
-                  <div className="flex items-center gap-2">
+                <div className="flex items-center justify-between p-3 bg-zinc-50 dark:bg-zinc-900">
+                  <button 
+                    onClick={() => setShowBluefinPositions(!showBluefinPositions)}
+                    className="flex items-center gap-2 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors rounded px-2 py-1"
+                  >
                     <Image 
                       src="https://bluefin.io/images/square.png"
                       alt="Bluefin Logo"
@@ -962,13 +1031,40 @@ export default function Home() {
                       className="rounded-sm"
                     />
                     <span className="font-medium text-zinc-900 dark:text-zinc-100">Bluefin</span>
+                    {showBluefinPositions ? (
+                      <ChevronDown className="h-4 w-4 text-zinc-500" />
+                    ) : (
+                      <ChevronRight className="h-4 w-4 text-zinc-500" />
+                    )}
+                  </button>
+                  <div className="flex items-center gap-2">
+                    <Link
+                      href="https://trade.bluefin.io/liquidity-pools"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="p-1 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded transition-colors"
+                      title="Open Bluefin"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-zinc-500">
+                        <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
+                        <polyline points="15 3 21 3 21 9"/>
+                        <line x1="10" y1="14" x2="21" y2="3"/>
+                      </svg>
+                    </Link>
+                    <button
+                      onClick={() => fetchUserAssets()}
+                      className="p-1 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded transition-colors"
+                      title="Refresh Bluefin balance"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-zinc-500">
+                        <path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/>
+                        <path d="M3 3v5h5"/>
+                        <path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16"/>
+                        <path d="M16 21h5v-5"/>
+                      </svg>
+                    </button>
                   </div>
-                  {showBluefinPositions ? (
-                    <ChevronDown className="h-4 w-4 text-zinc-500" />
-                  ) : (
-                    <ChevronRight className="h-4 w-4 text-zinc-500" />
-                  )}
-                </button>
+                </div>
                 
                 {showBluefinPositions && (
                   <div className="p-3">
