@@ -346,6 +346,7 @@ export async function fetchTokenBalances(address: string): Promise<TokenData> {
 // Function to sort tokens by USD value
 export async function sortTokensByValue(tokens: TokenData): Promise<Token[]> {
   try {
+    if (!tokens) return [];
     return Object.values(tokens).sort((a, b) => {
       const valueA = parseFloat(a.usdPrice || '0');
       const valueB = parseFloat(b.usdPrice || '0');
@@ -353,18 +354,19 @@ export async function sortTokensByValue(tokens: TokenData): Promise<Token[]> {
     });
   } catch (error) {
     console.error('Error sorting tokens:', error);
-    throw new Error('Failed to sort tokens');
+    return [];
   }
 }
 
 // Function to calculate total portfolio value
 export async function calculateTotalPortfolioValue(tokens: TokenData): Promise<number> {
   try {
+    if (!tokens) return 0;
     return Object.values(tokens).reduce((total, token) => {
       return total + parseFloat(token.usdPrice || '0');
     }, 0);
   } catch (error) {
     console.error('Error calculating portfolio value:', error);
-    throw new Error('Failed to calculate portfolio value');
+    return 0;
   }
 }

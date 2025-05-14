@@ -15,11 +15,15 @@ interface PieChartAssetsProps {
 }
 
 export function PieChartAssets({ tokenBalances }: PieChartAssetsProps) {
+  const safeTokenBalances = Array.isArray(tokenBalances) ? tokenBalances : [];
+  if (!safeTokenBalances.length) {
+    return <div className="text-center text-zinc-500 py-8">Нет данных для отображения диаграммы</div>;
+  }
   // Считаем общую сумму
-  const totalValue = tokenBalances.reduce((sum, t) => sum + t.value, 0);
+  const totalValue = safeTokenBalances.reduce((sum, t) => sum + t.value, 0);
   // Фильтруем токены >10%, остальные в 'Others'
-  const mainTokens = tokenBalances.filter(t => t.value / totalValue > 0.1);
-  const othersTokens = tokenBalances.filter(t => t.value / totalValue <= 0.1);
+  const mainTokens = safeTokenBalances.filter(t => t.value / totalValue > 0.1);
+  const othersTokens = safeTokenBalances.filter(t => t.value / totalValue <= 0.1);
   const othersValue = othersTokens.reduce((sum, t) => sum + t.value, 0);
   // Sapphire цвета для секторов
   const sapphireColors = [

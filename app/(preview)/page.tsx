@@ -147,8 +147,8 @@ export default function Home() {
   // Update total value when tokens change
   useEffect(() => {
     const updateTotalValue = async () => {
-      if (userTokens.length > 0) {
-        const tokenData = Object.fromEntries(userTokens.map(t => [t.id, t]));
+      if ((userTokens || []).length > 0) {
+        const tokenData = Object.fromEntries((userTokens || []).map(t => [t.id, t]));
         const total = await calculateTotalPortfolioValue(tokenData);
         setTotalTokenValue(total);
       } else {
@@ -235,7 +235,7 @@ export default function Home() {
   // Get total token value
   const getTotalTokenValue = async () => {
     try {
-      const tokenData = Object.fromEntries(userTokens.map(t => [t.id, t]));
+      const tokenData = Object.fromEntries((userTokens || []).map(t => [t.id, t]));
       return await calculateTotalPortfolioValue(tokenData);
     } catch (error) {
       console.error('Error calculating total value:', error);
@@ -391,10 +391,10 @@ export default function Home() {
     
     // Обработка специального действия для Pie chart
     if (action === "show-assets-pie-chart") {
-      if (wallet.connected && userTokens.length > 0) {
+      if (wallet.connected && (userTokens || []).length > 0) {
         setMessages((messages) => [
           ...messages,
-          <Message key={messages.length} role="assistant" content={<PieChartAssets tokenBalances={userTokens.map(t => ({ symbol: t.symbol, balance: t.balance, decimals: t.decimals, value: parseFloat(t.usdPrice || '0') }))} />} />
+          <Message key={messages.length} role="assistant" content={<PieChartAssets tokenBalances={(userTokens || []).map(t => ({ symbol: t.symbol, balance: t.balance, decimals: t.decimals, value: parseFloat(t.usdPrice || '0') }))} />} />
         ]);
       } else {
         setMessages((messages) => [
@@ -661,12 +661,12 @@ export default function Home() {
                       )}
                     </button>
                   </div>
-                  {userTokens.length > 0 && (
+                  {(userTokens || []).length > 0 && (
                     <button
                       onClick={() => {
                         setMessages((messages) => [
                           ...messages,
-                          <Message key={messages.length} role="assistant" content={<PieChartAssets tokenBalances={userTokens.map(t => ({ symbol: t.symbol, balance: t.balance, decimals: t.decimals, value: parseFloat(t.usdPrice || '0') }))} />} />
+                          <Message key={messages.length} role="assistant" content={<PieChartAssets tokenBalances={(userTokens || []).map(t => ({ symbol: t.symbol, balance: t.balance, decimals: t.decimals, value: parseFloat(t.usdPrice || '0') }))} />} />
                         ]);
                       }}
                       className="p-1 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded transition-colors ml-2"
@@ -683,11 +683,11 @@ export default function Home() {
                       <div className="flex justify-center py-4">
                         <span className="text-sm text-zinc-500">Loading tokens...</span>
                       </div>
-                    ) : userTokens.length > 0 ? (
+                    ) : (userTokens || []).length > 0 ? (
                       <div className="space-y-2">
                         
                         <div className="space-y-2">
-                          {userTokens.map((token) => (
+                          {(userTokens || []).map((token) => (
                             <div key={token.id} className="flex items-center justify-between p-2 rounded-lg bg-zinc-50 dark:bg-zinc-800/50">
                               <div className="flex items-center gap-2">
                                 {token.iconUrl ? (
@@ -702,7 +702,7 @@ export default function Home() {
                                 ) : (
                                   <div className="w-6 h-6 rounded-full bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center">
                                     <span className="text-xs font-medium text-zinc-500">
-                                      {token.symbol[0]}
+                                      {(token.symbol && token.symbol.length > 0) ? token.symbol[0] : '?'}
                                     </span>
                                   </div>
                                 )}
@@ -1261,13 +1261,31 @@ export default function Home() {
               return;
             }
 
+            // Добавляем токены пользователя в историю сообщений для LLM
+            if ((userTokens || []).length > 0) {
+              setMessages((messages) => [
+                ...messages,
+                <Message key={messages.length} role="user" content={
+                  `Мои токены: ${(userTokens || []).map(t => `${t.symbol}: $${parseFloat(t.usdPrice || '0')}`).join(', ')}`
+                } />,
+              ]);
+            }
+
             setMessages((messages) => [
               ...messages,
               <Message key={messages.length} role="user" content={input} />,
             ]);
             setInput("");
 
-            const response: ReactNode = await sendMessage(input);
+            const response: any = await sendMessage(input);
+            // Если пришёл showPieChart tool-ответ — рендерим PieChartAssets
+            if (response && typeof response === 'object' && response.type === 'showPieChart') {
+              setMessages((messages) => [
+                ...messages,
+                <Message key={messages.length} role="assistant" content={<PieChartAssets tokenBalances={response.tokens} />} />
+              ]);
+              return;
+            }
             setMessages((messages) => [...messages, response]);
           }}
         >
