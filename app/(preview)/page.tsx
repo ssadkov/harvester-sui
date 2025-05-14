@@ -461,6 +461,13 @@ export default function Home() {
     setTotalTokenValue(0);
   };
 
+  // Показывать меню при первой загрузке, если сообщений нет
+  useEffect(() => {
+    if (messages.length === 0) {
+      setShowActionButtons(true);
+    }
+  }, []);
+
   return (
     <div className="flex flex-row justify-between h-dvh bg-white dark:bg-zinc-900">
       {/* Overlay для мобильного drawer */}
@@ -1097,92 +1104,43 @@ export default function Home() {
               </div>
             </motion.div>
           )}
+          {/* ВСТАВЛЯЕМ МЕНЮ СРАЗУ ПОД ПРИВЕТСТВЕННЫМ БЛОКОМ */}
+          <AnimatePresence>
+            {showActionButtons && (
+              <motion.div 
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.9 }}
+                className="w-full md:w-[500px] mx-auto mt-8"
+              >
+                <div className="bg-white dark:bg-zinc-800 rounded-xl shadow-lg p-6 grid grid-cols-2 gap-4">
+                  {suggestedActions.map((action, index) => (
+                    <motion.button
+                      key={index}
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: 0.05 * index }}
+                      onClick={() => handleActionClick(action.action)}
+                      className="text-left border border-zinc-200 dark:border-zinc-700 text-zinc-800 dark:text-zinc-300 rounded-lg p-4 text-sm hover:bg-zinc-100 dark:hover:bg-zinc-700 transition-colors flex flex-col"
+                    >
+                      <span className="font-medium">{action.title}</span>
+                      <span className="text-zinc-500 dark:text-zinc-400">{action.label}</span>
+                    </motion.button>
+                  ))}
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+          {/* КОНЕЦ ВСТАВКИ МЕНЮ */}
           {messages.map((message) => message)}
           <div ref={messagesEndRef} />
-        </div>
-
-        {/* Центральные кнопки действий, показываются только когда showActionButtons=true */}
-        <AnimatePresence>
-          {showActionButtons && (
-            <motion.div 
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.9 }}
-              className="fixed inset-0 flex items-center justify-center z-20"
-              style={{ pointerEvents: 'none' }}
-            >
-              <div className="bg-white dark:bg-zinc-800 rounded-xl shadow-lg p-6 grid grid-cols-2 gap-4"
-                   style={{ pointerEvents: 'auto' }}>
-                {suggestedActions.map((action, index) => (
-                  <motion.button
-                    key={index}
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.05 * index }}
-                    onClick={() => handleActionClick(action.action)}
-                    className="text-left border border-zinc-200 dark:border-zinc-700 text-zinc-800 dark:text-zinc-300 rounded-lg p-4 text-sm hover:bg-zinc-100 dark:hover:bg-zinc-700 transition-colors flex flex-col"
-                  >
-                    <span className="font-medium">{action.title}</span>
-                    <span className="text-zinc-500 dark:text-zinc-400">{action.label}</span>
-                  </motion.button>
-                ))}
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-
-        <div className="grid sm:grid-cols-2 gap-2 w-full px-4 md:px-0 mx-auto md:max-w-[500px] mb-4">
-          {messages.length === 0 &&
-            suggestedActions.map((action, index) => (
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.01 * index }}
-                key={index}
-                className={index > 1 ? "hidden sm:block" : "block"}
-              >
-                <button
-                  onClick={async () => {
-                    // Обработка специального действия для проверки баланса
-                    if (action.action === "check-scallop-balance") {
-                      await sendScallopBalanceToChat();
-                      return;
-                    }
-                    
-                    // Обработка специального действия для проверки баланса Momentum
-                    if (action.action === "check-momentum-balance") {
-                      await sendMomentumBalanceToChat();
-                      return;
-                    }
-                    
-                    setMessages((messages) => [
-                      ...messages,
-                      <Message
-                        key={messages.length}
-                        role="user"
-                        content={action.action}
-                      />,
-                    ]);
-                    const response: ReactNode = await sendMessage(
-                      action.action,
-                    );
-                    setMessages((messages) => [...messages, response]);
-                  }}
-                  className="w-full text-left border border-zinc-200 dark:border-zinc-800 text-zinc-800 dark:text-zinc-300 rounded-lg p-2 text-sm hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors flex flex-col shadow-md"
-                >
-                  <span className="font-medium">{action.title}</span>
-                  <span className="text-zinc-500 dark:text-zinc-400">
-                    {action.label}
-                  </span>
-                </button>
-              </motion.div>
-            ))}
         </div>
 
         <form
           className="flex flex-col gap-2 relative items-center"
           onSubmit={async (event) => {
             event.preventDefault();
+            setShowActionButtons(false);
 
             // Проверка на специальные команды для баланса
             if (input.toLowerCase().includes("scallop balance") || 
@@ -1233,7 +1191,7 @@ export default function Home() {
               variant="default"
               size="icon"
               className="rounded-l-none"
-              onClick={toggleActionButtons}
+              onClick={() => setShowActionButtons(prev => !prev)}
             >
               <Menu className="h-4 w-4" />
             </Button>
