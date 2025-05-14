@@ -161,19 +161,18 @@ export default function Home() {
   // Check if mobile view on mount and window resize
   useEffect(() => {
     const checkIfMobile = () => {
-      setIsMobileView(window.innerWidth < 768);
-      // On mobile, collapse panel by default
       if (window.innerWidth < 768) {
+        setIsMobileView(true);
         setShowAssetPanel(false);
+      } else {
+        setIsMobileView(false);
+        setShowAssetPanel(true);
       }
     };
-    
     // Check on mount
     checkIfMobile();
-    
     // Add resize listener
     window.addEventListener('resize', checkIfMobile);
-    
     // Cleanup
     return () => window.removeEventListener('resize', checkIfMobile);
   }, []);
