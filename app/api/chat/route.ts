@@ -4,6 +4,7 @@ import { viewCamerasTool } from '@/app/tools/camera-tools';
 import { viewHubTool, updateHubTool } from '@/app/tools/hub-tools';
 import { viewUsageTool } from '@/app/tools/usage-tools';
 import { viewPoolsTool } from '@/app/tools/pool-tools';
+import { viewWalletTool } from '@/app/tools/wallet-tools';
 
 // Разрешаем стриминг ответов до 30 секунд
 const maxDuration = 30;
@@ -64,13 +65,15 @@ export async function POST(req: Request) {
       - viewHub: для просмотра состояния хаба
       - updateHub: для обновления состояния хаба
       - viewUsage: для просмотра использования ресурсов
-      - viewPools: для просмотра пулов ликвидности`,
+      - viewPools: для просмотра пулов ликвидности
+      - viewWallet: для просмотра адреса подключенного кошелька`,
       tools: {
         viewCameras: viewCamerasTool,
         viewHub: viewHubTool,
         updateHub: updateHubTool,
         viewUsage: viewUsageTool,
         viewPools: viewPoolsTool,
+        viewWallet: viewWalletTool,
       },
     });
 
