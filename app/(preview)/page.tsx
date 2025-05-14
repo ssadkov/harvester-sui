@@ -487,7 +487,22 @@ export default function Home() {
             <div className="p-4">
               {/* Header with wallet info */}
               <div className="flex items-center justify-between mb-4">
-                <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">My Assets</h2>
+                <div className="flex items-center gap-2">
+                  <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">My Assets</h2>
+                  <span className="text-lg font-bold text-zinc-900 dark:text-zinc-100">${formatNumber(totalAssets)}</span>
+                  <button
+                    onClick={() => fetchUserAssets()}
+                    className="p-1 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded transition-colors"
+                    title="Refresh all balances"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-zinc-500">
+                      <path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/>
+                      <path d="M3 3v5h5"/>
+                      <path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16"/>
+                      <path d="M16 21h5v-5"/>
+                    </svg>
+                  </button>
+                </div>
                 <Button
                   variant="ghost"
                   size="sm"
@@ -547,18 +562,6 @@ export default function Home() {
                     ) : (
                       <ChevronRight className="h-4 w-4 text-zinc-500" />
                     )}
-                  </button>
-                  <button
-                    onClick={() => fetchUserAssets()}
-                    className="p-1 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded transition-colors"
-                    title="Refresh wallet balance"
-                  >
-                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-zinc-500">
-                      <path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/>
-                      <path d="M3 3v5h5"/>
-                      <path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16"/>
-                      <path d="M16 21h5v-5"/>
-                    </svg>
                   </button>
                 </div>
                 
@@ -667,18 +670,6 @@ export default function Home() {
                         <line x1="10" y1="14" x2="21" y2="3"/>
                       </svg>
                     </Link>
-                    <button
-                      onClick={() => fetchUserAssets()}
-                      className="p-1 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded transition-colors"
-                      title="Refresh Scallop balance"
-                    >
-                      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-zinc-500">
-                        <path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/>
-                        <path d="M3 3v5h5"/>
-                        <path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16"/>
-                        <path d="M16 21h5v-5"/>
-                      </svg>
-                    </button>
                   </div>
                 </div>
                 
@@ -944,18 +935,6 @@ export default function Home() {
                         <line x1="10" y1="14" x2="21" y2="3"/>
                       </svg>
                     </Link>
-                    <button
-                      onClick={() => fetchUserAssets()}
-                      className="p-1 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded transition-colors"
-                      title="Refresh Momentum balance"
-                    >
-                      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-zinc-500">
-                        <path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/>
-                        <path d="M3 3v5h5"/>
-                        <path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16"/>
-                        <path d="M16 21h5v-5"/>
-                      </svg>
-                    </button>
                   </div>
                 </div>
                 
@@ -1051,18 +1030,6 @@ export default function Home() {
                         <line x1="10" y1="14" x2="21" y2="3"/>
                       </svg>
                     </Link>
-                    <button
-                      onClick={() => fetchUserAssets()}
-                      className="p-1 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded transition-colors"
-                      title="Refresh Bluefin balance"
-                    >
-                      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-zinc-500">
-                        <path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/>
-                        <path d="M3 3v5h5"/>
-                        <path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16"/>
-                        <path d="M16 21h5v-5"/>
-                      </svg>
-                    </button>
                   </div>
                 </div>
                 
@@ -1074,17 +1041,6 @@ export default function Home() {
                   </div>
                 )}
               </div>
-              
-              {/* Refresh button */}
-              <Button
-                onClick={fetchUserAssets}
-                variant="outline"
-                size="sm"
-                disabled={isLoadingAssets || !wallet.connected}
-                className="w-full mt-2"
-              >
-                {isLoadingAssets ? 'Refreshing...' : 'Refresh Assets'}
-              </Button>
             </div>
           </motion.div>
         )}
@@ -1126,13 +1082,17 @@ export default function Home() {
           {messages.length === 0 && (
             <motion.div className="h-[350px] px-4 w-full md:w-[500px] md:px-0 pt-20">
               <div className="border rounded-lg p-6 flex flex-col gap-4 text-zinc-500 text-sm dark:text-zinc-400 dark:border-zinc-700 shadow-lg">
-                <p className="flex flex-row justify-center gap-4 items-center text-zinc-900 dark:text-zinc-50">
-                  <VercelIcon size={16} />
-                  <span>+</span>
-                  <MasonryIcon />
-                </p>
-                <p>
-                SUI Harvester AI - an intelligent assistant that analyzes and manages your liquidity in the SUI ecosystem. Connect your wallet and let our AI optimize your DeFi operations for maximum yield and efficient asset management.
+                <div className="flex flex-row justify-center items-center mb-2">
+                  <Image
+                    src="/android-chrome-512x512.png"
+                    alt="SUI Harvester AI Logo"
+                    width={64}
+                    height={64}
+                    className="rounded-full"
+                  />
+                </div>
+                <p className="text-center text-zinc-900 dark:text-zinc-50 text-base leading-relaxed">
+                  SUI Harvester AI - an intelligent assistant that analyzes and manages your liquidity in the SUI ecosystem. Connect your wallet and let our AI optimize your DeFi operations for maximum yield and efficient asset management.
                 </p>
               </div>
             </motion.div>
