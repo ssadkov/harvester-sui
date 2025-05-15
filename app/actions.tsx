@@ -10,7 +10,6 @@ import {
 import { ReactNode } from "react";
 import { z } from "zod";
 import { CameraView } from "@/components/camera-view";
-import { HubView } from "@/components/hub-view";
 import { UsageView } from "@/components/usage-view";
 import { poolTools } from "@/app/actions/pool-actions";
 
@@ -136,7 +135,7 @@ const sendMessage = async (message: string) => {
             },
           ]);
 
-          return <Message role="assistant" content={<HubView hub={hub} />} />;
+          return <Message role="assistant" content={null} />;
         },
       },
       updateHub: {
@@ -185,7 +184,7 @@ const sendMessage = async (message: string) => {
             },
           ]);
 
-          return <Message role="assistant" content={<HubView hub={hub} />} />;
+          return <Message role="assistant" content={null} />;
         },
       },
       viewUsage: {

@@ -393,8 +393,6 @@ export default function Home() {
       switch (result.component) {
         case 'CameraView':
           return <CameraView {...result.props} />;
-        case 'HubView':
-          return <HubView {...result.props} />;
         case 'UsageView':
           return <UsageView {...result.props} />;
         case 'PoolsView':

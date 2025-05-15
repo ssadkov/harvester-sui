@@ -3,7 +3,6 @@
 import { useChat } from 'ai/react';
 import { useWallet, ConnectButton } from '@suiet/wallet-kit';
 import { CameraView } from '@/components/camera-view';
-import { HubView } from '@/components/hub-view';
 import { UsageView } from '@/components/usage-view';
 import { PoolsView } from './PoolsView';
 import { WalletView } from './WalletView';
@@ -52,8 +51,6 @@ export default function TestChat() {
       switch (result.component) {
         case 'CameraView':
           return <CameraView {...result.props} />;
-        case 'HubView':
-          return <HubView {...result.props} />;
         case 'UsageView':
           return <UsageView {...result.props} />;
         case 'PoolsView':
