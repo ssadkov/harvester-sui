@@ -1,27 +1,12 @@
 import { openai } from '@ai-sdk/openai';
 import { streamText } from 'ai';
 import { viewCamerasTool } from '@/app/tools/camera-tools';
-import { viewHubTool, updateHubTool } from '@/app/tools/hub-tools';
 import { viewUsageTool } from '@/app/tools/usage-tools';
 import { viewPoolsTool } from '@/app/tools/pool-tools';
 import { viewWalletTool } from '@/app/tools/wallet-tools';
 
 // Разрешаем стриминг ответов до 30 секунд
 const maxDuration = 30;
-
-// Состояние хаба
-let hub = {
-  climate: {
-    low: 23,
-    high: 25,
-  },
-  lights: [
-    { name: "patio", status: true },
-    { name: "kitchen", status: false },
-    { name: "garage", status: true },
-  ],
-  locks: [{ name: "back door", isLocked: true }],
-};
 
 // Моковые данные для пулов
 const mockPools = [
@@ -62,15 +47,11 @@ export async function POST(req: Request) {
       system: `Ты - ассистент по крипто финансам. Ты помогаешь пользователям с их крипто портфелем и инвестициями.
       Ты можешь использовать следующие инструменты:
       - viewCameras: для просмотра камер
-      - viewHub: для просмотра состояния хаба
-      - updateHub: для обновления состояния хаба
       - viewUsage: для просмотра использования ресурсов
       - viewPools: для просмотра пулов ликвидности
       - viewWallet: для просмотра адреса подключенного кошелька`,
       tools: {
         viewCameras: viewCamerasTool,
-        viewHub: viewHubTool,
-        updateHub: updateHubTool,
         viewUsage: viewUsageTool,
         viewPools: viewPoolsTool,
         viewWallet: viewWalletTool,
