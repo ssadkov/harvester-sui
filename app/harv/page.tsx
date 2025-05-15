@@ -1083,11 +1083,11 @@ export default function Home() {
         )}
         <div
           ref={messagesContainerRef}
-          className="flex flex-col gap-3 w-full items-center px-4 overflow-y-scroll scrollbar-none"
+          className="flex flex-col gap-3 w-full items-center px-4 overflow-y-scroll scrollbar-none md:max-w-[750px] mx-auto"
           style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
         >
           {messages.length === 0 && (
-            <motion.div className="h-[350px] px-4 w-full md:w-[500px] md:px-0 pt-20">
+            <motion.div className="h-[350px] w-full md:w-[750px] md:px-0 pt-20">
               <div className="border rounded-lg p-6 flex flex-col gap-4 text-zinc-500 text-sm dark:text-zinc-400 dark:border-zinc-700 shadow-lg">
                 <div className="flex flex-row justify-center items-center mb-2">
                   <Image
@@ -1107,35 +1107,51 @@ export default function Home() {
           {messages.map((message, idx) => (
             <div
               key={message.id}
-              className={`flex w-full md:max-w-[500px] ${message.role === 'user' ? 'justify-end' : 'justify-start'} ${idx === 0 ? 'pt-20' : ''}`}
+              className={`flex w-full md:max-w-[750px] ${message.role === 'user' ? 'justify-end' : 'justify-start'} ${idx === 0 ? 'pt-20' : ''}`}
             >
-              <div className={`max-w-[80%] rounded-lg p-3 ${
-                message.role === 'user' 
-                  ? 'bg-blue-500 text-white' 
-                  : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100'
-              }`}>
-                {message.parts?.map((part, index) => {
-                  switch (part.type) {
-                    case 'text':
+              {message.parts?.some(
+                (part) => part.type === 'tool-invocation' && part.toolInvocation.state === 'result' && part.toolInvocation.result?.type === 'ui'
+              ) ? (
+                <div className="w-full max-w-none rounded-lg p-3 bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100">
+                  {message.parts?.map((part, index) => {
+                    if (part.type === 'tool-invocation' && part.toolInvocation.state === 'result') {
+                      return <div key={index}>{renderToolResult(part.toolInvocation.result)}</div>;
+                    } else if (part.type === 'text') {
                       return <div key={index} className="text-sm">{part.text}</div>;
-                    case 'tool-invocation':
-                      return (
-                        <div key={index} className="mt-2">
-                          <div className="text-sm">
-                            {part.toolInvocation.state === 'partial-call' && 
-                              `Подготовка к вызову инструмента ${part.toolInvocation.toolName}...`}
-                            {part.toolInvocation.state === 'call' && 
-                              `Выполняется ${part.toolInvocation.toolName}...`}
-                            {part.toolInvocation.state === 'result' && 
-                              renderToolResult(part.toolInvocation.result)}
-                          </div>
-                        </div>
-                      );
-                    default:
+                    } else {
                       return null;
-                  }
-                })}
-              </div>
+                    }
+                  })}
+                </div>
+              ) : (
+                <div className={`max-w-[80%] rounded-lg p-3 ${
+                  message.role === 'user' 
+                    ? 'bg-blue-500 text-white' 
+                    : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100'
+                }`}>
+                  {message.parts?.map((part, index) => {
+                    switch (part.type) {
+                      case 'text':
+                        return <div key={index} className="text-sm">{part.text}</div>;
+                      case 'tool-invocation':
+                        return (
+                          <div key={index} className="mt-2">
+                            <div className="text-sm">
+                              {part.toolInvocation.state === 'partial-call' && 
+                                `Подготовка к вызову инструмента ${part.toolInvocation.toolName}...`}
+                              {part.toolInvocation.state === 'call' && 
+                                `Выполняется ${part.toolInvocation.toolName}...`}
+                              {part.toolInvocation.state === 'result' && 
+                                renderToolResult(part.toolInvocation.result)}
+                            </div>
+                          </div>
+                        );
+                      default:
+                        return null;
+                    }
+                  })}
+                </div>
+              )}
             </div>
           ))}
           <div ref={messagesEndRef} />
@@ -1148,7 +1164,7 @@ export default function Home() {
               initial={{ opacity: 0, scale: 0.9 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.9 }}
-              className="w-full md:w-[500px] mx-auto mb-4 z-50"
+              className="w-full md:max-w-[750px] mx-auto mb-4 z-50"
             >
               <div className="bg-white dark:bg-zinc-800 rounded-xl shadow-lg p-6 grid grid-cols-2 gap-4">
                 {suggestedActions.map((action, index) => (
@@ -1169,8 +1185,8 @@ export default function Home() {
           )}
         </AnimatePresence>
 
-        <form onSubmit={(e) => { setShowActionButtons(false); handleSubmit(e); }} className="flex flex-col gap-2 relative items-center">
-          <div className="flex w-full md:max-w-[500px] max-w-[calc(100dvw-32px)] shadow-lg">
+        <form onSubmit={(e) => { setShowActionButtons(false); handleSubmit(e); }} className="flex flex-col gap-2 relative items-center w-full md:max-w-[750px] mx-auto">
+          <div className="flex w-full shadow-lg">
             <input
               value={input}
               onChange={handleInputChange}

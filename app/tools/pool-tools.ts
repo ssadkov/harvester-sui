@@ -1,5 +1,7 @@
 import { tool } from 'ai';
 import { z } from 'zod';
+import { PoolsList } from '@/components/PoolsList';
+import { processPoolsData } from '@/utils/poolUtils';
 
 // Моковые данные для пулов
 const mockPools = [
@@ -30,38 +32,63 @@ const mockPools = [
 type RiskLevel = 'low' | 'medium' | 'high';
 
 export const viewPoolsTool = tool({
-  description: 'Показать информацию о доступных пулах ликвидности',
+  description: 'Показать пулы ликвидности для указанного токена',
   parameters: z.object({
-    protocol: z.string().optional().describe('Фильтр по протоколу'),
-    minApy: z.number().optional().describe('Минимальный APY'),
-    maxRisk: z.enum(['low', 'medium', 'high']).optional().describe('Максимальный уровень риска')
+    token: z.string().describe('Токен для поиска пулов (например: usdc, btc, sui)'),
   }),
-  execute: async ({ protocol, minApy, maxRisk }) => {
-    console.log('Filtering pools with params:', { protocol, minApy, maxRisk });
-    
-    let filteredPools = [...mockPools];
-    
-    if (protocol) {
-      filteredPools = filteredPools.filter(pool => pool.protocol === protocol);
-    }
-    
-    if (minApy) {
-      filteredPools = filteredPools.filter(pool => pool.apy >= minApy);
-    }
-    
-    if (maxRisk) {
-      const riskLevels: Record<RiskLevel, number> = { low: 0, medium: 1, high: 2 };
-      filteredPools = filteredPools.filter(pool => riskLevels[pool.risk as RiskLevel] <= riskLevels[maxRisk]);
-    }
-    
-    console.log('Filtered pools:', filteredPools);
-    
-    return {
-      type: 'ui',
-      component: 'PoolsView',
-      props: {
-        pools: filteredPools
+  execute: async ({ token }) => {
+    try {
+      console.log('Fetching pools for token:', token);
+      const baseUrl = typeof window === 'undefined' ? process.env.NEXT_PUBLIC_BASE_URL : '';
+      const response = await fetch(
+        `${baseUrl}/api/pools?search=${token.toLowerCase()}`,
+        {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        }
+      );
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
       }
-    };
+      
+      const data = await response.json();
+      console.log('Received data:', data);
+      
+      if (!data || Object.keys(data).length === 0) {
+        return {
+          type: 'ui',
+          component: 'PoolsView',
+          props: {
+            message: 'Пулы не найдены',
+            pools: []
+          }
+        };
+      }
+
+      const processedPools = processPoolsData(data);
+      console.log('Processed pools:', processedPools);
+      
+      return {
+        type: 'ui',
+        component: 'PoolsView',
+        props: {
+          message: `Найдено пулов: ${processedPools.length}`,
+          pools: processedPools
+        }
+      };
+    } catch (error) {
+      console.error('Error fetching pools:', error);
+      return {
+        type: 'ui',
+        component: 'PoolsView',
+        props: {
+          message: 'Ошибка при получении данных о пулах',
+          pools: []
+        }
+      };
+    }
   }
 }); 
