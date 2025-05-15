@@ -1,7 +1,7 @@
 "use client";
 
 import { ReactNode, useRef, useState, useEffect, useMemo } from "react";
-import { useActions } from "ai/rsc";
+import { useChat } from 'ai/react';
 import { Message } from "@/components/message";
 import { useScrollToBottom } from "@/components/use-scroll-to-bottom";
 import { motion, AnimatePresence } from "framer-motion";
@@ -23,6 +23,11 @@ import ReactMarkdown from 'react-markdown';
 import Image from "next/image";
 import { PieChartAssets } from '@/components/PieChartAssets';
 import { ProtocolPieChart } from '@/components/ProtocolPieChart';
+import { CameraView } from '@/components/camera-view';
+import { HubView } from '@/components/hub-view';
+import { UsageView } from '@/components/usage-view';
+import { PoolsView } from '../components/chat/PoolsView';
+import { WalletView } from '../components/chat/WalletView';
 
 // Define Momentum position interface
 interface MomentumPosition {
@@ -108,11 +113,18 @@ interface Position {
 }
 
 export default function Home() {
-  const { sendMessage } = useActions();
+  const { messages, input, handleInputChange, handleSubmit } = useChat({
+    api: '/api/chat',
+    maxSteps: 5,
+    onFinish: (message) => {
+      console.log('Chat finished:', message);
+    },
+    onError: (error) => {
+      console.error('Chat error:', error);
+    }
+  });
   const wallet = useWallet();
 
-  const [input, setInput] = useState<string>("");
-  const [messages, setMessages] = useState<Array<ReactNode>>([]);
   const [showActionButtons, setShowActionButtons] = useState(false);
   const [balanceData, setBalanceData] = useState<{
     formatted: string;
@@ -264,36 +276,9 @@ export default function Home() {
 
     setIsLoadingBalance(true);
 
-    // Добавляем сообщение пользователя
-    setMessages((messages) => [
-      ...messages,
-      <Message key={messages.length} role="user" content="Check my Scallop balance" />,
-    ]);
-
     try {
-      const userAddress = wallet.account.address;
-      
-      // Создаем временное сообщение о загрузке
-      setMessages((messages) => [
-        ...messages,
-        <Message key={messages.length} role="assistant" content="Fetching your Scallop balance..." />,
-      ]);
-
       // Получаем данные баланса
-      const balanceData = await fetchScallopBalance(userAddress);
-      
-      // Удаляем временное сообщение о загрузке (последнее сообщение)
-      setMessages((messages) => messages.slice(0, -1));
-
-      // Добавляем форматированный ответ
-      setMessages((messages) => [
-        ...messages,
-        <Message 
-          key={messages.length} 
-          role="assistant" 
-          content={balanceData.formatted} 
-        />,
-      ]);
+      const balanceData = await fetchScallopBalance(wallet.account.address);
       
       // Update user assets with new data
       setBalanceData(balanceData);
@@ -302,18 +287,15 @@ export default function Home() {
     } catch (error) {
       console.error("Error fetching balance:", error);
       
-      // Удаляем временное сообщение о загрузке (последнее сообщение)
-      setMessages((messages) => messages.slice(0, -1));
-      
       // Добавляем сообщение об ошибке
-      setMessages((messages) => [
-        ...messages,
-        <Message 
-          key={messages.length} 
-          role="assistant" 
-          content={`Sorry, I couldn't fetch your Scallop balance. Error: ${error instanceof Error ? error.message : "Unknown error"}`} 
-        />,
-      ]);
+      // setMessages((messages) => [
+      //   ...messages,
+      //   <Message 
+      //     key={messages.length} 
+      //     role="assistant" 
+      //     content={`Sorry, I couldn't fetch your Scallop balance. Error: ${error instanceof Error ? error.message : "Unknown error"}`} 
+      //   />,
+      // ]);
     } finally {
       setIsLoadingBalance(false);
     }
@@ -328,36 +310,9 @@ export default function Home() {
 
     setIsLoadingMomentum(true);
 
-    // Добавляем сообщение пользователя
-    setMessages((messages) => [
-      ...messages,
-      <Message key={messages.length} role="user" content="Check my Momentum balance" />,
-    ]);
-
     try {
-      const userAddress = wallet.account.address;
-      
-      // Создаем временное сообщение о загрузке
-      setMessages((messages) => [
-        ...messages,
-        <Message key={messages.length} role="assistant" content="Fetching your Momentum positions..." />,
-      ]);
-
       // Получаем данные баланса
-      const momentumData = await fetchMomentumBalance(userAddress);
-      
-      // Удаляем временное сообщение о загрузке (последнее сообщение)
-      setMessages((messages) => messages.slice(0, -1));
-
-      // Добавляем форматированный ответ
-      setMessages((messages) => [
-        ...messages,
-        <Message 
-          key={messages.length} 
-          role="assistant" 
-          content={momentumData.formatted} 
-        />,
-      ]);
+      const momentumData = await fetchMomentumBalance(wallet.account.address);
       
       // Update momentum data
       setMomentumData(momentumData);
@@ -368,100 +323,18 @@ export default function Home() {
     } catch (error) {
       console.error("Error fetching Momentum balance:", error);
       
-      // Удаляем временное сообщение о загрузке (последнее сообщение)
-      setMessages((messages) => messages.slice(0, -1));
-      
       // Добавляем сообщение об ошибке
-      setMessages((messages) => [
-        ...messages,
-        <Message 
-          key={messages.length} 
-          role="assistant" 
-          content={`Sorry, I couldn't fetch your Momentum positions. Error: ${error instanceof Error ? error.message : "Unknown error"}`} 
-        />,
-      ]);
+      // setMessages((messages) => [
+      //   ...messages,
+      //   <Message 
+      //     key={messages.length} 
+      //     role="assistant" 
+      //     content={`Sorry, I couldn't fetch your Momentum positions. Error: ${error instanceof Error ? error.message : "Unknown error"}`} 
+      //   />,
+      // ]);
     } finally {
       setIsLoadingMomentum(false);
     }
-  };
-
-  // Функция для выполнения действия и скрытия кнопок
-  const handleActionClick = async (action: string) => {
-    setShowActionButtons(false);
-    
-    // Обработка специального действия для Pie chart
-    if (action === "show-assets-pie-chart") {
-      if (wallet.connected && (userTokens || []).length > 0) {
-        setMessages((messages) => [
-          ...messages,
-          <Message key={messages.length} role="assistant" content={<PieChartAssets tokenBalances={(userTokens || []).map(t => ({ symbol: t.symbol, balance: t.balance, decimals: t.decimals, value: parseFloat(t.usdPrice || '0') }))} />} />
-        ]);
-      } else {
-        setMessages((messages) => [
-          ...messages,
-          <Message key={messages.length} role="assistant" content={"Please connect your wallet to view the pie chart."} />
-        ]);
-      }
-      return;
-    }
-    
-    // Обработка специального действия для Protocol Pie chart
-    if (action === "show-protocols-pie-chart") {
-      if (wallet.connected) {
-        const protocolBalances = [
-          scallopData ? (
-            parseFloat(scallopData.totalSupplyValue || "0") +
-            parseFloat(scallopData.totalCollateralValue || "0") +
-            parseFloat(scallopData.totalLockedScaValue || "0")
-          ) : 0,
-          momentumData && momentumData.raw && !momentumData.raw.error ?
-            momentumData.raw.reduce((sum: number, pos: any) => sum + (pos.amount || 0), 0) : 0,
-          0 // Bluefin
-        ];
-        const hasNonZero = protocolBalances.some(v => v > 0);
-        if (!hasNonZero) return;
-        setMessages((messages) => [
-          ...messages,
-          <Message key={messages.length} role="assistant" content={<ProtocolPieChart protocolBalances={[
-            { protocol: 'Wallet', value: totalTokenValue },
-            { protocol: 'Scallop', value: scallopData ? 
-              parseFloat(scallopData.totalSupplyValue || "0") +
-              parseFloat(scallopData.totalCollateralValue || "0") +
-              parseFloat(scallopData.totalLockedScaValue || "0") : 0
-            },
-            { protocol: 'Momentum', value: momentumData && momentumData.raw && !momentumData.raw.error ? 
-              momentumData.raw.reduce((sum: number, pos: any) => sum + (pos.amount || 0), 0) : 0
-            },
-            { protocol: 'Bluefin', value: 0 }
-          ]} />} />
-        ]);
-      } else {
-        setMessages((messages) => [
-          ...messages,
-          <Message key={messages.length} role="assistant" content={"Please connect your wallet to view the protocols distribution."} />
-        ]);
-      }
-      return;
-    }
-    
-    // Обработка специального действия для проверки баланса Scallop
-    if (action === "check-scallop-balance") {
-      await sendScallopBalanceToChat();
-      return;
-    }
-    
-    // Обработка специального действия для проверки баланса Momentum
-    if (action === "check-momentum-balance") {
-      await sendMomentumBalanceToChat();
-      return;
-    }
-    
-    setMessages((messages) => [
-      ...messages,
-      <Message key={messages.length} role="user" content={action} />,
-    ]);
-    const response: ReactNode = await sendMessage(action);
-    setMessages((messages) => [...messages, response]);
   };
 
   // Функция для переключения видимости меню действий
@@ -513,6 +386,27 @@ export default function Home() {
       messagesEndRef.current.scrollIntoView({ behavior: "smooth" });
     }
   }, [messages, showActionButtons]);
+
+  // Рендер результата tool-инвокации (аналогично TestChat)
+  const renderToolResult = (result: any) => {
+    if (typeof result === 'object' && result.type === 'ui') {
+      switch (result.component) {
+        case 'CameraView':
+          return <CameraView {...result.props} />;
+        case 'HubView':
+          return <HubView {...result.props} />;
+        case 'UsageView':
+          return <UsageView {...result.props} />;
+        case 'PoolsView':
+          return <PoolsView {...result.props} />;
+        case 'WalletView':
+          return <WalletView {...result.props} />;
+        default:
+          return <div>Неизвестный компонент: {result.component}</div>;
+      }
+    }
+    return <div>{JSON.stringify(result)}</div>;
+  };
 
   return (
     <div className="flex flex-row justify-between h-dvh bg-white dark:bg-zinc-900">
@@ -575,21 +469,21 @@ export default function Home() {
                     return (
                       <button
                         onClick={() => {
-                          setMessages((messages) => [
-                            ...messages,
-                            <Message key={messages.length} role="assistant" content={<ProtocolPieChart protocolBalances={[
-                              { protocol: 'Wallet', value: totalTokenValue },
-                              { protocol: 'Scallop', value: scallopData ? 
-                                parseFloat(scallopData.totalSupplyValue || "0") +
-                                parseFloat(scallopData.totalCollateralValue || "0") +
-                                parseFloat(scallopData.totalLockedScaValue || "0") : 0
-                              },
-                              { protocol: 'Momentum', value: momentumData && momentumData.raw && !momentumData.raw.error ? 
-                                momentumData.raw.reduce((sum: number, pos: any) => sum + (pos.amount || 0), 0) : 0
-                              },
-                              { protocol: 'Bluefin', value: 0 }
-                            ]} />} />
-                          ]);
+                          // setMessages((messages) => [
+                          //   ...messages,
+                          //   <Message key={messages.length} role="assistant" content={<ProtocolPieChart protocolBalances={[
+                          //     { protocol: 'Wallet', value: totalTokenValue },
+                          //     { protocol: 'Scallop', value: scallopData ? 
+                          //       parseFloat(scallopData.totalSupplyValue || "0") +
+                          //       parseFloat(scallopData.totalCollateralValue || "0") +
+                          //       parseFloat(scallopData.totalLockedScaValue || "0") : 0
+                          //     },
+                          //     { protocol: 'Momentum', value: momentumData && momentumData.raw && !momentumData.raw.error ? 
+                          //       momentumData.raw.reduce((sum: number, pos: any) => sum + (pos.amount || 0), 0) : 0
+                          //     },
+                          //     { protocol: 'Bluefin', value: 0 }
+                          //   ]} />} />
+                          // ]);
                         }}
                         className="p-1 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded transition-colors"
                         title="Show protocols distribution"
@@ -664,10 +558,10 @@ export default function Home() {
                   {(userTokens || []).length > 0 && (
                     <button
                       onClick={() => {
-                        setMessages((messages) => [
-                          ...messages,
-                          <Message key={messages.length} role="assistant" content={<PieChartAssets tokenBalances={(userTokens || []).map(t => ({ symbol: t.symbol, balance: t.balance, decimals: t.decimals, value: parseFloat(t.usdPrice || '0') }))} />} />
-                        ]);
+                        // setMessages((messages) => [
+                        //   ...messages,
+                        //   <Message key={messages.length} role="assistant" content={<PieChartAssets tokenBalances={(userTokens || []).map(t => ({ symbol: t.symbol, balance: t.balance, decimals: t.decimals, value: parseFloat(t.usdPrice || '0') }))} />} />
+                        // ]);
                       }}
                       className="p-1 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded transition-colors ml-2"
                       title="Show pie chart of assets"
@@ -1189,7 +1083,7 @@ export default function Home() {
         )}
         <div
           ref={messagesContainerRef}
-          className="flex flex-col gap-3 h-full w-full items-center overflow-y-scroll px-4"
+          className="flex flex-col gap-3 w-full items-center px-4"
         >
           {messages.length === 0 && (
             <motion.div className="h-[350px] px-4 w-full md:w-[500px] md:px-0 pt-20">
@@ -1209,93 +1103,47 @@ export default function Home() {
               </div>
             </motion.div>
           )}
-          {messages.map((message) => message)}
+          {messages.map((message) => (
+            <div key={message.id} className={`flex w-full md:max-w-[500px] ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+              <div className={`max-w-[80%] rounded-lg p-3 ${
+                message.role === 'user' 
+                  ? 'bg-blue-500 text-white' 
+                  : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100'
+              }`}>
+                {message.parts?.map((part, index) => {
+                  switch (part.type) {
+                    case 'text':
+                      return <div key={index} className="text-sm">{part.text}</div>;
+                    case 'tool-invocation':
+                      return (
+                        <div key={index} className="mt-2">
+                          <div className="text-sm">
+                            {part.toolInvocation.state === 'partial-call' && 
+                              `Подготовка к вызову инструмента ${part.toolInvocation.toolName}...`}
+                            {part.toolInvocation.state === 'call' && 
+                              `Выполняется ${part.toolInvocation.toolName}...`}
+                            {part.toolInvocation.state === 'result' && 
+                              renderToolResult(part.toolInvocation.result)}
+                          </div>
+                        </div>
+                      );
+                    default:
+                      return null;
+                  }
+                })}
+              </div>
+            </div>
+          ))}
           <div ref={messagesEndRef} />
-          <AnimatePresence>
-            {showActionButtons && (
-              <motion.div 
-                initial={{ opacity: 0, scale: 0.9 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.9 }}
-                className="w-full md:w-[500px] mx-auto mb-4"
-              >
-                <div className="bg-white dark:bg-zinc-800 rounded-xl shadow-lg p-6 grid grid-cols-2 gap-4">
-                  {suggestedActions.map((action, index) => (
-                    <motion.button
-                      key={index}
-                      initial={{ opacity: 0, y: 20 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: 0.05 * index }}
-                      onClick={() => handleActionClick(action.action)}
-                      className="text-left border border-zinc-200 dark:border-zinc-700 text-zinc-800 dark:text-zinc-300 rounded-lg p-4 text-sm hover:bg-zinc-100 dark:hover:bg-zinc-700 transition-colors flex flex-col"
-                    >
-                      <span className="font-medium">{action.title}</span>
-                      <span className="text-zinc-500 dark:text-zinc-400">{action.label}</span>
-                    </motion.button>
-                  ))}
-                </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
         </div>
 
-        <form
-          className="flex flex-col gap-2 relative items-center"
-          onSubmit={async (event) => {
-            event.preventDefault();
-            setShowActionButtons(false);
-
-            // Проверка на специальные команды для баланса
-            if (input.toLowerCase().includes("scallop balance") || 
-                input.toLowerCase().includes("momentum balance") || 
-                input.toLowerCase().includes("check balance") ||
-                input.toLowerCase().includes("my balance")) {
-              
-              if (input.toLowerCase().includes("momentum")) {
-                await sendMomentumBalanceToChat();
-              } else {
-                await sendScallopBalanceToChat();
-              }
-              
-              setInput("");
-              return;
-            }
-
-            // Добавляем токены пользователя в историю сообщений для LLM
-            if ((userTokens || []).length > 0) {
-              setMessages((messages) => [
-                ...messages,
-                <Message key={messages.length} role="user" content={
-                  `Мои токены: ${(userTokens || []).map(t => `${t.symbol}: $${parseFloat(t.usdPrice || '0')}`).join(', ')}`
-                } />,
-              ]);
-            }
-
-            setMessages((messages) => [
-              ...messages,
-              <Message key={messages.length} role="user" content={input} />,
-            ]);
-            setInput("");
-
-            const response: any = await sendMessage(input);
-            // Если пришёл showPieChart tool-ответ — рендерим PieChartAssets
-            if (response && typeof response === 'object' && response.type === 'showPieChart') {
-              setMessages((messages) => [
-                ...messages,
-                <Message key={messages.length} role="assistant" content={<PieChartAssets tokenBalances={response.tokens} />} />
-              ]);
-              return;
-            }
-            setMessages((messages) => [...messages, response]);
-          }}
-        >
+        <form onSubmit={handleSubmit} className="flex flex-col gap-2 relative items-center">
           <div className="flex w-full md:max-w-[500px] max-w-[calc(100dvw-32px)] shadow-lg">
             <input
-              ref={inputRef}
-              className="flex-grow rounded-l-md bg-zinc-100 px-2 py-1.5 outline-none dark:bg-zinc-700 text-zinc-800 dark:text-zinc-300"
-              placeholder="Send a message..."
               value={input}
-              onChange={(event) => setInput(event.target.value)}
+              onChange={handleInputChange}
+              placeholder="Send a message..."
+              className="flex-grow rounded-l-md bg-zinc-100 px-2 py-1.5 outline-none dark:bg-zinc-700 text-zinc-800 dark:text-zinc-300"
             />
             <Button
               type="submit"
@@ -1305,14 +1153,12 @@ export default function Home() {
             >
               <SendHorizonal className="h-4 w-4" />
             </Button>
-            
-            {/* Кнопка меню теперь всегда видна */}
             <Button
               type="button"
               variant="default"
               size="icon"
               className="rounded-l-none"
-              onClick={() => setShowActionButtons(prev => !prev)}
+              onClick={toggleAssetPanel}
             >
               <Menu className="h-4 w-4" />
             </Button>
