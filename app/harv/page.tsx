@@ -24,7 +24,6 @@ import Image from "next/image";
 import { PieChartAssets } from '@/components/PieChartAssets';
 import { ProtocolPieChart } from '@/components/ProtocolPieChart';
 import { CameraView } from '@/components/camera-view';
-import { HubView } from '@/components/hub-view';
 import { UsageView } from '@/components/usage-view';
 import { PoolsView } from '../components/chat/PoolsView';
 import { WalletView } from '../components/chat/WalletView';
