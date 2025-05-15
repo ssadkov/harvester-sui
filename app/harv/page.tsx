@@ -1083,7 +1083,8 @@ export default function Home() {
         )}
         <div
           ref={messagesContainerRef}
-          className="flex flex-col gap-3 w-full items-center px-4"
+          className="flex flex-col gap-3 w-full items-center px-4 overflow-y-scroll scrollbar-none"
+          style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
         >
           {messages.length === 0 && (
             <motion.div className="h-[350px] px-4 w-full md:w-[500px] md:px-0 pt-20">
@@ -1103,8 +1104,11 @@ export default function Home() {
               </div>
             </motion.div>
           )}
-          {messages.map((message) => (
-            <div key={message.id} className={`flex w-full md:max-w-[500px] ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+          {messages.map((message, idx) => (
+            <div
+              key={message.id}
+              className={`flex w-full md:max-w-[500px] ${message.role === 'user' ? 'justify-end' : 'justify-start'} ${idx === 0 ? 'pt-20' : ''}`}
+            >
               <div className={`max-w-[80%] rounded-lg p-3 ${
                 message.role === 'user' 
                   ? 'bg-blue-500 text-white' 
@@ -1137,7 +1141,35 @@ export default function Home() {
           <div ref={messagesEndRef} />
         </div>
 
-        <form onSubmit={handleSubmit} className="flex flex-col gap-2 relative items-center">
+        {/* Быстрые действия (аналогично главной) */}
+        <AnimatePresence>
+          {showActionButtons && (
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.9 }}
+              className="w-full md:w-[500px] mx-auto mb-4 z-50"
+            >
+              <div className="bg-white dark:bg-zinc-800 rounded-xl shadow-lg p-6 grid grid-cols-2 gap-4">
+                {suggestedActions.map((action, index) => (
+                  <motion.button
+                    key={index}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.05 * index }}
+                    onClick={() => {}}
+                    className="text-left border border-zinc-200 dark:border-zinc-700 text-zinc-800 dark:text-zinc-300 rounded-lg p-4 text-sm hover:bg-zinc-100 dark:hover:bg-zinc-700 transition-colors flex flex-col"
+                  >
+                    <span className="font-medium">{action.title}</span>
+                    <span className="text-zinc-500 dark:text-zinc-400">{action.label}</span>
+                  </motion.button>
+                ))}
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        <form onSubmit={(e) => { setShowActionButtons(false); handleSubmit(e); }} className="flex flex-col gap-2 relative items-center">
           <div className="flex w-full md:max-w-[500px] max-w-[calc(100dvw-32px)] shadow-lg">
             <input
               value={input}
@@ -1158,7 +1190,7 @@ export default function Home() {
               variant="default"
               size="icon"
               className="rounded-l-none"
-              onClick={toggleAssetPanel}
+              onClick={() => setShowActionButtons((prev) => !prev)}
             >
               <Menu className="h-4 w-4" />
             </Button>
