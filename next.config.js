@@ -11,7 +11,13 @@ const nextConfig = {
     ],
   },
   webpack: (config) => {
-    config.plugins.push(new MiniCssExtractPlugin());
+    config.plugins = config.plugins || [];
+    config.plugins.push(
+      new MiniCssExtractPlugin({
+        filename: 'static/css/[contenthash].css',
+        chunkFilename: 'static/css/[contenthash].css',
+      })
+    );
     return config;
   },
 }
