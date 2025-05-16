@@ -34,7 +34,6 @@ export function PoolsView({ message, pools }: PoolsViewProps) {
     if (pool.tvl < 100000) return false;
     
     // Then apply type filter
-    if (selectedType === 'lending') return pool.type.toLowerCase().includes('lending');
     if (selectedType === 'stable') {
       if (pool.type.toLowerCase().includes('lending')) return true;
       if (['bluefin', 'momentum'].includes(pool.protocol.toLowerCase())) {
@@ -119,103 +118,87 @@ export function PoolsView({ message, pools }: PoolsViewProps) {
         >
           Risk
         </button>
-        <button
-          onClick={() => setSelectedType('lending')}
-          className={`px-4 py-2 rounded ${
-            selectedType === 'lending' 
-              ? 'bg-blue-500 text-white' 
-              : 'bg-gray-100 hover:bg-gray-200'
-          }`}
-        >
-          Lending
-        </button>
       </div>
 
-      <div className="bg-white dark:bg-zinc-900 rounded-lg shadow overflow-x-auto">
-        <div className="p-4 text-sm text-gray-600 dark:text-gray-400 border-b">
-          {getTabDescription(selectedType)}
-        </div>
-        <table className="w-full border-collapse min-w-[600px] max-w-[700px] mx-auto">
-          <thead>
-            <tr className="bg-gray-100 dark:bg-zinc-800">
-              <th className="px-4 py-2 text-left">Pool</th>
-              <th className="px-4 py-2 text-right">APR</th>
-              <th className="px-4 py-2 text-left">Risk</th>
-              <th className="px-4 py-2 text-left">Protocol</th>
-              <th className="px-4 py-2 text-right">TVL</th>
-            </tr>
-          </thead>
-          <tbody>
-            {filteredPools.map((pool, index) => (
-              <tr key={index} className="border-b hover:bg-gray-50 dark:hover:bg-zinc-800">
-                <td className="px-4 py-2">
-                  {pool.tokens.join(' / ')}
-                </td>
-                <td className="px-4 py-2 text-right font-medium text-green-600">
-                  {(pool.totalApr * 100).toFixed(2)}%
-                </td>
-                <td className="px-4 py-2">
-                  {pool.type.toLowerCase().includes('lending') ? (
-                    <span className="text-xl" title="Lending pool - lowest risk">🟢</span>
-                  ) : ['bluefin', 'momentum'].includes(pool.protocol.toLowerCase()) ? (
-                    (() => {
-                      const tokens = pool.tokens.map(t => t.toUpperCase());
-                      const isStable = tokens[0].includes('USD') && tokens[1].includes('USD') || 
-                                     tokens[0].slice(-3) === tokens[1].slice(-3);
-                      return (
-                        <span 
-                          className="text-xl" 
-                          title={isStable 
-                            ? "Stable pool - wrapped tokens or stablecoins pair" 
-                            : "Volatile pool - different underlying assets"}
-                        >
-                          {isStable ? '🟡' : '🔴'}
-                        </span>
-                      );
-                    })()
-                  ) : (
-                    <span className="text-xl" title="Liquidity pool - medium risk">🟡</span>
+      <div className="p-4 text-sm text-gray-600 dark:text-gray-400 border-b">
+        {getTabDescription(selectedType)}
+      </div>
+      <table className="w-full border-collapse min-w-[600px] max-w-[700px] mx-auto">
+        <thead>
+          <tr className="bg-gray-100 dark:bg-zinc-800">
+            <th className="px-4 py-2 text-left">Pool</th>
+            <th className="px-4 py-2 text-right">APR</th>
+            <th className="px-4 py-2 text-left">Risk</th>
+            <th className="px-4 py-2 text-left">Protocol</th>
+          </tr>
+        </thead>
+        <tbody>
+          {filteredPools.map((pool, index) => (
+            <tr key={index} className="border-b hover:bg-gray-50 dark:hover:bg-zinc-800">
+              <td className="px-4 py-2">
+                {pool.tokens.join(' / ')}
+              </td>
+              <td className="px-4 py-2 text-right font-medium text-green-600">
+                {(pool.totalApr * 100).toFixed(2)}%
+              </td>
+              <td className="px-4 py-2">
+                {pool.type.toLowerCase().includes('lending') ? (
+                  <span className="text-xl" title="Lending pool - lowest risk">🟢</span>
+                ) : ['bluefin', 'momentum'].includes(pool.protocol.toLowerCase()) ? (
+                  (() => {
+                    const tokens = pool.tokens.map(t => t.toUpperCase());
+                    const isStable = tokens[0].includes('USD') && tokens[1].includes('USD') || 
+                                   tokens[0].slice(-3) === tokens[1].slice(-3);
+                    return (
+                      <span 
+                        className="text-xl" 
+                        title={isStable 
+                          ? "Stable pool - wrapped tokens or stablecoins pair" 
+                          : "Volatile pool - different underlying assets"}
+                      >
+                        {isStable ? '🟡' : '🔴'}
+                      </span>
+                    );
+                  })()
+                ) : (
+                  <span className="text-xl" title="Liquidity pool - medium risk">🟡</span>
+                )}
+              </td>
+              <td className="px-4 py-2">
+                <div className="flex items-center gap-2">
+                  {protocolIcons[pool.protocol.toLowerCase()] && (
+                    <Image
+                      src={protocolIcons[pool.protocol.toLowerCase()]}
+                      alt={pool.protocol}
+                      width={20}
+                      height={20}
+                      className="rounded"
+                      sizes="20px"
+                      onError={(e) => {
+                        const target = e.target as HTMLImageElement;
+                        target.style.display = 'none';
+                      }}
+                    />
                   )}
-                </td>
-                <td className="px-4 py-2">
-                  <div className="flex items-center gap-2">
-                    {protocolIcons[pool.protocol.toLowerCase()] && (
-                      <Image
-                        src={protocolIcons[pool.protocol.toLowerCase()]}
-                        alt={pool.protocol}
-                        width={20}
-                        height={20}
-                        className="rounded"
-                        sizes="20px"
-                        onError={(e) => {
-                          const target = e.target as HTMLImageElement;
-                          target.style.display = 'none';
-                        }}
-                      />
-                    )}
-                    <Link 
-                      href={protocolLinks[pool.protocol.toLowerCase()] || '#'}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="capitalize hover:text-blue-500 transition-colors"
-                    >
-                      {pool.protocol}
-                    </Link>
-                  </div>
-                </td>
-                <td className="px-4 py-2 text-right">
-                  ${(pool.protocol.toLowerCase() === 'scallop' ? pool.tvl / 1000000 / 1000 : pool.tvl / 1000000).toFixed(2)}M
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-        <div className="text-sm text-gray-500 mt-2 text-center p-2 border-t">
-          <div>Only pools with TVL over $100,000 are shown</div>
-          <div className="mt-1 font-medium">Average APR: {averageApr}%</div>
-          <div className="mt-3 text-gray-600 dark:text-gray-400 max-w-2xl mx-auto">
-            {getTabFooterDescription(selectedType)}
-          </div>
+                  <Link 
+                    href={protocolLinks[pool.protocol.toLowerCase()] || '#'}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="capitalize hover:text-blue-500 transition-colors"
+                  >
+                    {pool.protocol}
+                  </Link>
+                </div>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      <div className="text-sm text-gray-500 mt-2 text-center p-2 border-t">
+        <div>Only pools with TVL over $100,000 are shown</div>
+        <div className="mt-1 font-medium">Average APR: {averageApr}%</div>
+        <div className="mt-3 text-gray-600 dark:text-gray-400 max-w-2xl mx-auto">
+          {getTabFooterDescription(selectedType)}
         </div>
       </div>
     </div>
