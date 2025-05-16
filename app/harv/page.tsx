@@ -1135,9 +1135,9 @@ export default function Home() {
                           <div key={index} className="mt-2">
                             <div className="text-sm">
                               {part.toolInvocation.state === 'partial-call' && 
-                                `Подготовка к вызову инструмента ${part.toolInvocation.toolName}...`}
+                                `Preparing to call ${part.toolInvocation.toolName}...`}
                               {part.toolInvocation.state === 'call' && 
-                                `Выполняется ${part.toolInvocation.toolName}...`}
+                                `Executing ${part.toolInvocation.toolName}...`}
                               {part.toolInvocation.state === 'result' && 
                                 renderToolResult(part.toolInvocation.result)}
                             </div>

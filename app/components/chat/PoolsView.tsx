@@ -30,6 +30,10 @@ export function PoolsView({ message, pools }: PoolsViewProps) {
   const [selectedType, setSelectedType] = useState<PoolType>('all');
 
   const filteredPools = pools.filter(pool => {
+    // Filter by TVL first
+    if (pool.tvl < 100000) return false;
+    
+    // Then apply type filter
     if (selectedType === 'all') return true;
     if (selectedType === 'lending') return pool.type.toLowerCase().includes('lending');
     if (selectedType === 'liquidity') return pool.type.toLowerCase().includes('impermanent loss');
@@ -135,14 +139,14 @@ export function PoolsView({ message, pools }: PoolsViewProps) {
                   </div>
                 </td>
                 <td className="px-4 py-2 text-right">
-                  ${(pool.tvl / 1000000).toFixed(2)}M
+                  ${(pool.protocol.toLowerCase() === 'scallop' ? pool.tvl / 1000000 / 1000 : pool.tvl / 1000000).toFixed(2)}M
                 </td>
               </tr>
             ))}
           </tbody>
         </table>
         <div className="text-sm text-gray-500 mt-2 text-center p-2">
-          Only pools with TVL over $10,000 are shown
+          Only pools with TVL over $100,000 are shown
         </div>
       </div>
     </div>

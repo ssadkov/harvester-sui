@@ -67,13 +67,16 @@ export function formatApr(apr: number): string {
   return `${(apr * 100).toFixed(2)}%`;
 }
 
-export function formatTvl(tvl: number): string {
-  if (tvl >= 1e9) {
-    return `$${(tvl / 1e9).toFixed(2)}B`;
-  } else if (tvl >= 1e6) {
-    return `$${(tvl / 1e6).toFixed(2)}M`;
-  } else if (tvl >= 1e3) {
-    return `$${(tvl / 1e3).toFixed(2)}K`;
+export function formatTvl(tvl: number, protocol?: string): string {
+  // Divide by 1000 for Scallop pools
+  const adjustedTvl = protocol?.toLowerCase() === 'scallop' ? tvl / 1000 : tvl;
+  
+  if (adjustedTvl >= 1e9) {
+    return `$${(adjustedTvl / 1e9).toFixed(2)}B`;
+  } else if (adjustedTvl >= 1e6) {
+    return `$${(adjustedTvl / 1e6).toFixed(2)}M`;
+  } else if (adjustedTvl >= 1e3) {
+    return `$${(adjustedTvl / 1e3).toFixed(2)}K`;
   }
-  return `$${tvl.toFixed(2)}`;
+  return `$${adjustedTvl.toFixed(2)}`;
 } 

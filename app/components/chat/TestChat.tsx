@@ -58,7 +58,7 @@ export default function TestChat() {
         case 'WalletView':
           return <WalletView {...result.props} />;
         default:
-          return <div>Неизвестный компонент: {result.component}</div>;
+          return <div>Unknown component: {result.component}</div>;
       }
     }
     return <div>{JSON.stringify(result)}</div>;
@@ -92,7 +92,7 @@ export default function TestChat() {
             <div className="p-4">
               <div className="flex items-center gap-2 mb-4">
                 <Wallet className="h-4 w-4 text-emerald-500" />
-                <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">Активы</h2>
+                <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">Assets</h2>
               </div>
               
               {/* Wallet status */}
@@ -104,20 +104,20 @@ export default function TestChat() {
                         {wallet.account.address.substring(0, 6)}...{wallet.account.address.substring(wallet.account.address.length - 4)}
                       </span>
                       <span className="bg-emerald-100 dark:bg-emerald-900 text-emerald-800 dark:text-emerald-200 text-xs px-2 py-0.5 rounded-full">
-                        Подключен
+                        Connected
                       </span>
                     </div>
                     <button
                       onClick={() => wallet.disconnect()}
                       className="text-xs text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300"
                     >
-                      Отключить
+                      Disconnect
                     </button>
                   </div>
                 ) : (
                   <div className="flex items-center gap-2">
-                    <span className="text-sm text-zinc-500">Подключите кошелек</span>
-                    <ConnectButton label="Подключить" />
+                    <span className="text-sm text-zinc-500">Connect your wallet</span>
+                    <ConnectButton label="Connect" />
                   </div>
                 )}
               </div>
@@ -125,7 +125,7 @@ export default function TestChat() {
               {/* Placeholder для будущих компонентов */}
               <div className="space-y-4">
                 <div className="p-4 bg-zinc-50 dark:bg-zinc-900 rounded-lg">
-                  <h3 className="text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">Общий баланс</h3>
+                  <h3 className="text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">Total Balance</h3>
                   <p className="text-2xl font-bold text-zinc-900 dark:text-zinc-100">$0.00</p>
                 </div>
               </div>
@@ -175,9 +175,9 @@ export default function TestChat() {
                         <div key={index} className="mt-2">
                           <div className="text-sm">
                             {part.toolInvocation.state === 'partial-call' && 
-                              `Подготовка к вызову инструмента ${part.toolInvocation.toolName}...`}
+                              `Preparing to call tool ${part.toolInvocation.toolName}...`}
                             {part.toolInvocation.state === 'call' && 
-                              `Выполняется ${part.toolInvocation.toolName}...`}
+                              `Calling ${part.toolInvocation.toolName}...`}
                             {part.toolInvocation.state === 'result' && 
                               renderToolResult(part.toolInvocation.result)}
                           </div>

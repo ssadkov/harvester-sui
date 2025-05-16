@@ -44,12 +44,14 @@ export async function POST(req: Request) {
       messages,
       toolCallStreaming: true,
       maxSteps: 5,
-      system: `Ты - ассистент по крипто финансам. Ты помогаешь пользователям с их крипто портфелем и инвестициями.
-      Ты можешь использовать следующие инструменты:
-      - viewCameras: для просмотра камер
-      - viewUsage: для просмотра использования ресурсов
-      - viewPools: для просмотра пулов ликвидности
-      - viewWallet: для просмотра адреса подключенного кошелька`,
+      system: `You are a crypto finance assistant. You help users with their crypto portfolio and investments.
+      You can use the following tools:
+      - viewCameras: to view cameras
+      - viewUsage: to view resource usage
+      - viewPools: to view liquidity pools
+      - viewWallet: to view connected wallet address
+
+      Important: Always respond in the same language as the user's message. If the user writes in Russian, respond in Russian. If the user writes in English, respond in English.`,
       tools: {
         viewCameras: viewCamerasTool,
         viewUsage: viewUsageTool,

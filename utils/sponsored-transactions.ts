@@ -51,7 +51,7 @@ export function initSuiClient(network: 'mainnet' | 'testnet' | 'devnet' = 'mainn
  * @param seedPhrase Mnemonic seed phrase (12 or 24 words)
  */
 export function createKeypairFromSeed(seedPhrase: string): Ed25519Keypair {
-  // Sui рекомендует использовать именно этот метод!
+  // Sui recommends using this method!
   return Ed25519Keypair.deriveKeypair(seedPhrase, "m/44'/784'/0'/0'/0'");
 }
 
@@ -83,7 +83,7 @@ export async function prepareTransactionForSigning(
   try {
     const txb = new Transaction();
     
-    // Получаем монеты пользователя
+    // Get user's coins
     const { data: coins } = await client.getCoins({
       owner: senderAddress,
       coinType: tokenInfo.coinType
@@ -99,30 +99,22 @@ export async function prepareTransactionForSigning(
       throw new Error(`Insufficient funds in sender's account`);
     }
     
-    // Строим транзакцию перевода
-    if (totalBalance === amountInSmallestUnits) {
-      txb.transferObjects(
-        coins.map(coin => txb.object(coin.coinObjectId)),
-        txb.pure.address(recipientAddress)
-      );
-    } else {
-      const [coin] = txb.splitCoins(
-        txb.object(coins[0].coinObjectId),
-        [txb.pure.u64(amountInSmallestUnits)]
-      );
-      txb.transferObjects([coin], txb.pure.address(recipientAddress));
-    }
+    // Build transfer transaction
+    txb.transferObjects(
+      coins.map(coin => txb.object(coin.coinObjectId)),
+      txb.pure.address(recipientAddress)
+    );
     
-    // Устанавливаем отправителя
+    // Set sender
     txb.setSender(senderAddress);
     
-    // Строим только transaction kind, без газа
+    // Build only transaction kind, without gas
     const txBytes = await txb.build({ client, onlyTransactionKind: true });
     
-    // Преобразуем в Base64
+    // Convert to Base64
     const txBase64 = toB64(txBytes);
     
-    // Создаем обертку совместимую с wallet-kit
+    // Create a wrapper compatible with wallet-kit
     const transactionWrapper = {
       toJSON: async () => {
         return Promise.resolve(txBase64);
@@ -176,7 +168,7 @@ export async function sendSponsoredTransaction(
         ? `${senderSignatureData.substring(0, 30)}... (length: ${senderSignatureData.length})` 
         : JSON.stringify(senderSignatureData).substring(0, 100) + '...');
     
-    // Более надежная обработка формата подписи
+    // More reliable signature handling
     let senderSignature;
     
     if (typeof senderSignatureData === 'string') {
@@ -184,18 +176,18 @@ export async function sendSponsoredTransaction(
     } else if (senderSignatureData && senderSignatureData.signature) {
       senderSignature = senderSignatureData.signature;
     } else if (senderSignatureData && typeof senderSignatureData === 'object') {
-      // Пытаемся извлечь подпись из известных форматов кошельков
+      // Try to extract signature from known wallet formats
       if (senderSignatureData.data) {
         senderSignature = senderSignatureData.data;
       } else if (senderSignatureData.bytes) {
-        // Некоторые кошельки используют bytes
+        // Some wallets use bytes
         senderSignature = senderSignatureData.bytes;
       } else {
-        console.error('Неизвестный формат подписи:', senderSignatureData);
-        throw new Error('Не удалось извлечь подпись из предоставленных данных');
+        console.error('Unknown signature format:', senderSignatureData);
+        throw new Error('Unable to extract signature from provided data');
       }
     } else {
-      throw new Error('Недопустимый формат подписи');
+      throw new Error('Invalid signature format');
     }
     
     console.log('Extracted sender signature type:', typeof senderSignature);
@@ -204,26 +196,26 @@ export async function sendSponsoredTransaction(
         ? `${senderSignature.substring(0, 30)}... (length: ${senderSignature.length})` 
         : 'Not a string');
     
-    // Создаем транзакцию
+    // Create transaction
     const txb = new Transaction();
     
-    // Получаем seed phrase для спонсора
+    // Get seed phrase for sponsor
     const sponsorSeedPhrase = process.env.NEXT_PUBLIC_SPONSOR_SEED_PHRASE || 
                              process.env.SPONSOR_SEED_PHRASE;
     
     if (!sponsorSeedPhrase) {
-      throw new Error('Seed phrase спонсора не найдена в переменных окружения');
+      throw new Error('Sponsor seed phrase not found in environment variables');
     }
     
-    // Создаем keypair спонсора
+    // Create sponsor keypair
     const sponsorKeypair = createKeypairFromSeed(sponsorSeedPhrase);
     const sponsorAddress = sponsorKeypair.getPublicKey().toSuiAddress();
     console.log('Sponsor address:', sponsorAddress);
     
-    // Инициализируем клиент
+    // Initialize client
     const client = initSuiClient();
     
-    // Конвертируем сумму
+    // Convert amount
     const tokenInfo = TOKENS[tokenSymbol];
     const amountInSmallestUnits = BigInt(
       Math.round(Number(amount) * 10 ** tokenInfo.decimals)
@@ -231,39 +223,39 @@ export async function sendSponsoredTransaction(
     
     console.log('Amount in smallest units:', amountInSmallestUnits.toString());
     
-    // Получаем монеты отправителя
+    // Get sender's coins
     const { data: senderCoins } = await client.getCoins({
       owner: senderAddress,
       coinType: tokenInfo.coinType
     });
     
     if (!senderCoins || senderCoins.length === 0) {
-      throw new Error(`Монеты ${tokenSymbol} не найдены на счете отправителя`);
+      throw new Error(`${tokenSymbol} coins not found on sender's account`);
     }
     
     console.log('Found sender coins:', senderCoins.length);
     
-    // Проверяем баланс
+    // Check balance
     const totalBalance = senderCoins.reduce((sum, coin) => sum + BigInt(coin.balance), 0n);
     if (totalBalance < amountInSmallestUnits) {
-      throw new Error(`Недостаточно средств на счете отправителя`);
+      throw new Error(`Insufficient funds on sender's account`);
     }
     
     console.log('Total balance:', totalBalance.toString());
     
-    // Получаем монеты спонсора для газа
+    // Get sponsor coins for gas
     const { data: sponsorCoins } = await client.getCoins({
       owner: sponsorAddress,
       coinType: '0x2::sui::SUI'
     });
     
     if (!sponsorCoins || sponsorCoins.length === 0) {
-      throw new Error('На счете спонсора не найдены монеты для оплаты газа');
+      throw new Error('Sponsor coins not found on sponsor account');
     }
     
     console.log('Found sponsor coins:', sponsorCoins.length);
     
-    // Строим транзакцию перевода
+    // Build transfer transaction
     if (totalBalance === amountInSmallestUnits) {
       txb.transferObjects(
         senderCoins.map(coin => txb.object(coin.coinObjectId)),
@@ -277,7 +269,7 @@ export async function sendSponsoredTransaction(
       txb.transferObjects([coin], txb.pure.address(recipientAddress));
     }
     
-    // Устанавливаем отправителя и газ
+    // Set sender and gas
     txb.setSender(senderAddress);
     txb.setGasOwner(sponsorAddress);
     txb.setGasPayment([{
@@ -286,42 +278,42 @@ export async function sendSponsoredTransaction(
       digest: sponsorCoins[0].digest
     }]);
     
-    // Устанавливаем явный бюджет газа
+    // Set explicit gas budget
     const txBytes = await txb.build({ 
       client
     });
     
     console.log('Transaction built successfully, bytes length:', txBytes.length);
     
-    // Обеспечиваем правильный формат подписи отправителя
-    // Это, вероятно, место, где возникает ошибка DataView
+    // Ensure correct sender signature format
+    // This is likely where the DataView error occurs
     let finalSenderSignature;
     
     try {
-      // Пытаемся правильно форматировать подпись
+      // Try to format signature correctly
       if (typeof senderSignature === 'string') {
-        // Обрабатываем подписи в формате base64
+        // Handle base64 signatures
         if (senderSignature.includes('==')) {
           try {
-            // Проверяем, это base64, который нужно декодировать
+            // Check if it's base64 that needs to be decoded
             const decoded = fromB64(senderSignature);
             console.log('Successfully decoded base64 signature');
-            finalSenderSignature = senderSignature; // Оставляем оригинал, если он уже правильно отформатирован
+            finalSenderSignature = senderSignature; // Keep original if already correctly formatted
           } catch (e) {
             console.log('Not valid base64, using as is');
             finalSenderSignature = senderSignature;
           }
         } 
-        // Обрабатываем hex подписи
+        // Handle hex signature
         else if (senderSignature.startsWith('0x')) {
           finalSenderSignature = senderSignature;
         } 
-        // Добавляем hex префикс, если отсутствует
+        // Add hex prefix if missing
         else {
           finalSenderSignature = `0x${senderSignature}`;
         }
       } else {
-        throw new Error('Подпись отправителя должна быть строкой');
+        throw new Error('Sender signature must be a string');
       }
       
       console.log('Final sender signature format:', 
@@ -329,16 +321,16 @@ export async function sendSponsoredTransaction(
       
     } catch (error) {
       console.error('Error processing sender signature:', error);
-      throw new Error('Не удалось обработать подпись отправителя');
+      throw new Error('Unable to process sender signature');
     }
     
-    // Спонсор подписывает транзакцию
+    // Sponsor signs transaction
     const sponsorSignatureResult = await sponsorKeypair.signTransaction(txBytes);
     const sponsorSignature = sponsorSignatureResult.signature;
     
     console.log('Transaction signed by sponsor, signature length:', sponsorSignature.length);
     
-    // Проверка формата подписи спонсора
+    // Check sponsor signature format
     const finalSponsorSignature = sponsorSignature.startsWith('0x') 
       ? sponsorSignature 
       : `0x${sponsorSignature}`;
@@ -347,7 +339,7 @@ export async function sendSponsoredTransaction(
       finalSenderSignature.startsWith('0x') ? 'Hex (0x)' : 'Other',
       'Sponsor:', finalSponsorSignature.startsWith('0x') ? 'Hex (0x)' : 'Other');
     
-    // Выполняем транзакцию с обеими подписями
+    // Execute transaction with both signatures
     try {
       console.log('Executing transaction with signatures...');
       
@@ -370,16 +362,16 @@ export async function sendSponsoredTransaction(
     } catch (error) {
       console.error('Error executing transaction block:', error);
       
-      // Пробуем альтернативный формат подписи - иногда это может помочь
+      // Try alternative signature format - sometimes this can help
       if (error instanceof Error && 
           (error.message.includes('DataView') || error.message.includes('bounds'))) {
         console.log('Trying alternative signature format...');
         
-        // Пробуем декодировать base64, если это возможно
+        // Try to decode base64 if possible
         try {
           let altSenderSignature = finalSenderSignature;
           
-          // Если подпись в формате base64, преобразуем в бинарный массив
+          // If signature is base64, convert to binary array
           if (finalSenderSignature.includes('==')) {
             const binaryData = fromB64(finalSenderSignature);
             altSenderSignature = `0x${Buffer.from(binaryData).toString('hex')}`;
@@ -405,16 +397,16 @@ export async function sendSponsoredTransaction(
           };
         } catch (retryError) {
           console.error('Alternative format also failed:', retryError);
-          throw error; // Выбрасываем исходную ошибку
+          throw error; // Throw original error
         }
       }
       
-      throw error; // Перебрасываем ошибку дальше
+      throw error; // Throw error further
     }
   } catch (error) {
     console.error('Error in sponsored transaction:', error);
     
-    // Предоставляем более подробную информацию об ошибке
+    // Provide more detailed information about the error
     let errorMessage = 'Unknown error';
     let errorDetails = null;
     
@@ -425,7 +417,7 @@ export async function sendSponsoredTransaction(
         stack: error.stack,
       };
       
-      // Специальная обработка ошибок DataView
+      // Special handling for DataView errors
       if (error.message.includes('DataView') || error.message.includes('bounds')) {
         errorMessage = 'Binary data format error: ' + error.message;
         console.error('This is likely an issue with signature format or transaction bytes');
