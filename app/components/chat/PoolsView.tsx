@@ -107,9 +107,25 @@ export function PoolsView({ message, pools }: PoolsViewProps) {
                 </td>
                 <td className="px-4 py-2">
                   {pool.type.toLowerCase().includes('lending') ? (
-                    <span className="text-xl">🟢</span>
+                    <span className="text-xl" title="Lending pool - lowest risk">🟢</span>
+                  ) : ['bluefin', 'momentum'].includes(pool.protocol.toLowerCase()) ? (
+                    (() => {
+                      const tokens = pool.tokens.map(t => t.toUpperCase());
+                      const isStable = tokens[0].includes('USD') && tokens[1].includes('USD') || 
+                                     tokens[0].slice(-3) === tokens[1].slice(-3);
+                      return (
+                        <span 
+                          className="text-xl" 
+                          title={isStable 
+                            ? "Stable pool - wrapped tokens or stablecoins pair" 
+                            : "Volatile pool - different underlying assets"}
+                        >
+                          {isStable ? '🟡' : '🔴'}
+                        </span>
+                      );
+                    })()
                   ) : (
-                    <span className="text-xl">🟡</span>
+                    <span className="text-xl" title="Liquidity pool - medium risk">🟡</span>
                   )}
                 </td>
                 <td className="px-4 py-2">
