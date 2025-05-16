@@ -24,21 +24,54 @@ const protocolLinks: { [key: string]: string } = {
   navi: 'https://app.naviprotocol.io/?code=539477413831118848',
 };
 
-type PoolType = 'all' | 'lending' | 'liquidity';
+type PoolType = 'stable' | 'risk' | 'lending';
 
 export function PoolsView({ message, pools }: PoolsViewProps) {
-  const [selectedType, setSelectedType] = useState<PoolType>('all');
+  const [selectedType, setSelectedType] = useState<PoolType>('stable');
 
   const filteredPools = pools.filter(pool => {
     // Filter by TVL first
     if (pool.tvl < 100000) return false;
     
     // Then apply type filter
-    if (selectedType === 'all') return true;
     if (selectedType === 'lending') return pool.type.toLowerCase().includes('lending');
-    if (selectedType === 'liquidity') return pool.type.toLowerCase().includes('impermanent loss');
+    if (selectedType === 'stable') {
+      if (pool.type.toLowerCase().includes('lending')) return true;
+      if (['bluefin', 'momentum'].includes(pool.protocol.toLowerCase())) {
+        const tokens = pool.tokens.map(t => t.toUpperCase());
+        return tokens[0].includes('USD') && tokens[1].includes('USD') || 
+               tokens[0].slice(-3) === tokens[1].slice(-3);
+      }
+      return true;
+    }
+    if (selectedType === 'risk') {
+      if (['bluefin', 'momentum'].includes(pool.protocol.toLowerCase())) {
+        const tokens = pool.tokens.map(t => t.toUpperCase());
+        return !(tokens[0].includes('USD') && tokens[1].includes('USD') || 
+                tokens[0].slice(-3) === tokens[1].slice(-3));
+      }
+      return false;
+    }
     return true;
   });
+
+  // Calculate average APR for each category
+  const averageApr = filteredPools.length > 0 
+    ? (filteredPools.reduce((sum, pool) => sum + pool.totalApr, 0) / filteredPools.length * 100).toFixed(2)
+    : '0.00';
+
+  const getTabDescription = (type: PoolType) => {
+    switch (type) {
+      case 'stable':
+        return "Stable pools include lending positions and liquidity pools with wrapped tokens or stablecoin pairs. Examples: USDC/USDT, wBTC/LBTC";
+      case 'risk':
+        return "Risk pools are liquidity positions with different underlying assets. Examples: DEEP/USDC, WAL/USDC, wBTC/USDC";
+      case 'lending':
+        return "Lending pools offer the lowest risk with fixed interest rates. Examples: USDC lending, SUI lending";
+      default:
+        return "";
+    }
+  };
 
   if (!pools || pools.length === 0) {
     return (
@@ -54,14 +87,24 @@ export function PoolsView({ message, pools }: PoolsViewProps) {
     <div className="w-full">
       <div className="flex justify-center mb-4 space-x-2">
         <button
-          onClick={() => setSelectedType('all')}
+          onClick={() => setSelectedType('stable')}
           className={`px-4 py-2 rounded ${
-            selectedType === 'all' 
+            selectedType === 'stable' 
               ? 'bg-blue-500 text-white' 
               : 'bg-gray-100 hover:bg-gray-200'
           }`}
         >
-          All
+          Stable
+        </button>
+        <button
+          onClick={() => setSelectedType('risk')}
+          className={`px-4 py-2 rounded ${
+            selectedType === 'risk' 
+              ? 'bg-blue-500 text-white' 
+              : 'bg-gray-100 hover:bg-gray-200'
+          }`}
+        >
+          Risk
         </button>
         <button
           onClick={() => setSelectedType('lending')}
@@ -73,19 +116,12 @@ export function PoolsView({ message, pools }: PoolsViewProps) {
         >
           Lending
         </button>
-        <button
-          onClick={() => setSelectedType('liquidity')}
-          className={`px-4 py-2 rounded ${
-            selectedType === 'liquidity' 
-              ? 'bg-blue-500 text-white' 
-              : 'bg-gray-100 hover:bg-gray-200'
-          }`}
-        >
-          Liquidity
-        </button>
       </div>
 
       <div className="bg-white dark:bg-zinc-900 rounded-lg shadow overflow-x-auto">
+        <div className="p-4 text-sm text-gray-600 dark:text-gray-400 border-b">
+          {getTabDescription(selectedType)}
+        </div>
         <table className="w-full border-collapse min-w-[600px] max-w-[700px] mx-auto">
           <thead>
             <tr className="bg-gray-100 dark:bg-zinc-800">
@@ -161,8 +197,9 @@ export function PoolsView({ message, pools }: PoolsViewProps) {
             ))}
           </tbody>
         </table>
-        <div className="text-sm text-gray-500 mt-2 text-center p-2">
-          Only pools with TVL over $100,000 are shown
+        <div className="text-sm text-gray-500 mt-2 text-center p-2 border-t">
+          <div>Only pools with TVL over $100,000 are shown</div>
+          <div className="mt-1 font-medium">Average APR: {averageApr}%</div>
         </div>
       </div>
     </div>
