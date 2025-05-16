@@ -32,9 +32,9 @@ const mockPools = [
 type RiskLevel = 'low' | 'medium' | 'high';
 
 export const viewPoolsTool = tool({
-  description: 'Показать пулы ликвидности для указанного токена',
+  description: 'Show liquidity pools for the specified token',
   parameters: z.object({
-    token: z.string().describe('Токен для поиска пулов (например: usdc, btc, sui)'),
+    token: z.string().describe('Token to search pools for (e.g., usdc, btc, sui)'),
   }),
   execute: async ({ token }) => {
     try {
@@ -62,7 +62,7 @@ export const viewPoolsTool = tool({
           type: 'ui',
           component: 'PoolsView',
           props: {
-            message: 'Пулы не найдены',
+            message: 'No pools found',
             pools: []
           }
         };
@@ -75,7 +75,7 @@ export const viewPoolsTool = tool({
         type: 'ui',
         component: 'PoolsView',
         props: {
-          message: `Найдено пулов: ${processedPools.length}`,
+          message: `Found pools: ${processedPools.length}`,
           pools: processedPools
         }
       };
@@ -85,7 +85,7 @@ export const viewPoolsTool = tool({
         type: 'ui',
         component: 'PoolsView',
         props: {
-          message: 'Ошибка при получении данных о пулах',
+          message: 'Error fetching pool data',
           pools: []
         }
       };

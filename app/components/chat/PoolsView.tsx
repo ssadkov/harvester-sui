@@ -57,7 +57,7 @@ export function PoolsView({ message, pools }: PoolsViewProps) {
               : 'bg-gray-100 hover:bg-gray-200'
           }`}
         >
-          Все
+          All
         </button>
         <button
           onClick={() => setSelectedType('lending')}
@@ -67,7 +67,7 @@ export function PoolsView({ message, pools }: PoolsViewProps) {
               : 'bg-gray-100 hover:bg-gray-200'
           }`}
         >
-          Кредитование
+          Lending
         </button>
         <button
           onClick={() => setSelectedType('liquidity')}
@@ -77,7 +77,7 @@ export function PoolsView({ message, pools }: PoolsViewProps) {
               : 'bg-gray-100 hover:bg-gray-200'
           }`}
         >
-          Ликвидность
+          Liquidity
         </button>
       </div>
 
@@ -85,10 +85,10 @@ export function PoolsView({ message, pools }: PoolsViewProps) {
         <table className="w-full border-collapse min-w-[600px] max-w-[700px] mx-auto">
           <thead>
             <tr className="bg-gray-100 dark:bg-zinc-800">
-              <th className="px-4 py-2 text-left">Пул</th>
+              <th className="px-4 py-2 text-left">Pool</th>
               <th className="px-4 py-2 text-right">APR</th>
-              <th className="px-4 py-2 text-left">Риск</th>
-              <th className="px-4 py-2 text-left">Протокол</th>
+              <th className="px-4 py-2 text-left">Risk</th>
+              <th className="px-4 py-2 text-left">Protocol</th>
               <th className="px-4 py-2 text-right">TVL</th>
             </tr>
           </thead>
@@ -142,7 +142,7 @@ export function PoolsView({ message, pools }: PoolsViewProps) {
           </tbody>
         </table>
         <div className="text-sm text-gray-500 mt-2 text-center p-2">
-          Показываются только пулы с TVL более $10,000
+          Only pools with TVL over $10,000 are shown
         </div>
       </div>
     </div>
