@@ -51,6 +51,13 @@ export async function POST(req: Request) {
       - viewPools: to view liquidity pools
       - viewWallet: to view connected wallet address
 
+      When showing pool information:
+      1. First show the table with pools
+      2. Then provide a brief summary of the top 3 pools by APR
+      3. Format the summary as a numbered list
+      4. For each pool show: pair name, APR, protocol
+      5. Keep the description concise and focused on APR
+
       Important: Always respond in the same language as the user's message. If the user writes in Russian, respond in Russian. If the user writes in English, respond in English.`,
       tools: {
         viewCameras: viewCamerasTool,

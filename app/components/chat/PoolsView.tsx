@@ -67,7 +67,20 @@ export function PoolsView({ message, pools }: PoolsViewProps) {
       case 'risk':
         return "Risk pools are liquidity positions with different underlying assets. Examples: DEEP/USDC, WAL/USDC, wBTC/USDC";
       case 'lending':
-        return "Lending pools offer the lowest risk with fixed interest rates. Examples: USDC lending, SUI lending";
+        return "Lending pools offer the lowest risk. Examples: USDC lending, SUI lending";
+      default:
+        return "";
+    }
+  };
+
+  const getTabFooterDescription = (type: PoolType) => {
+    switch (type) {
+      case 'stable':
+        return "Stable pools are recommended for conservative investors. They provide steady returns with minimal impermanent loss risk. Perfect for long-term positions.";
+      case 'risk':
+        return "Risk pools offer higher potential returns but come with increased impermanent loss risk. Suitable for experienced traders who can actively manage their positions.";
+      case 'lending':
+        return "Lending pools provide a secure way to earn passive income. Your assets are protected by over-collateralization and liquidation mechanisms.";
       default:
         return "";
     }
@@ -200,6 +213,9 @@ export function PoolsView({ message, pools }: PoolsViewProps) {
         <div className="text-sm text-gray-500 mt-2 text-center p-2 border-t">
           <div>Only pools with TVL over $100,000 are shown</div>
           <div className="mt-1 font-medium">Average APR: {averageApr}%</div>
+          <div className="mt-3 text-gray-600 dark:text-gray-400 max-w-2xl mx-auto">
+            {getTabFooterDescription(selectedType)}
+          </div>
         </div>
       </div>
     </div>
