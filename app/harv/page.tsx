@@ -111,6 +111,41 @@ interface Position {
   apy?: string;
 }
 
+// Finkeeper API interfaces
+interface FinkeeperNetworkBalance {
+  network: string;
+  networkLogo: string;
+  chainId: number;
+  currencyAmount: string;
+  investmentCount: number;
+}
+
+interface FinkeeperPlatform {
+  platformName: string;
+  analysisPlatformId: number;
+  platformLogo: string;
+  platformColor: string;
+  currencyAmount: string;
+  isSupportInvest: boolean;
+  bonusTag: number;
+  platformUrl: string;
+  networkBalanceVoList: FinkeeperNetworkBalance[];
+  investmentCount: number;
+}
+
+interface FinkeeperWalletPlatform {
+  platformList: FinkeeperPlatform[];
+  totalAssets: string;
+}
+
+interface FinkeeperResponse {
+  code: number;
+  msg: string;
+  data: {
+    walletIdPlatformList: FinkeeperWalletPlatform[];
+  };
+}
+
 export default function Home() {
   const { messages, input, handleInputChange, handleSubmit } = useChat({
     api: '/api/chat',
@@ -142,8 +177,8 @@ export default function Home() {
   const [scallopData, setScallopData] = useState<ScallopData | null>(null);
   const [isLoadingAssets, setIsLoadingAssets] = useState(false);
   const [showAssetPanel, setShowAssetPanel] = useState(true);
-  const [showTokens, setShowTokens] = useState(true);
-  const [showScallopPositions, setShowScallopPositions] = useState(true);
+  const [showTokens, setShowTokens] = useState(false);
+  const [showScallopPositions, setShowScallopPositions] = useState(false);
   const [showMomentumPositions, setShowMomentumPositions] = useState(false);
   const [showBluefinPositions, setShowBluefinPositions] = useState(false);
   const [isMobileView, setIsMobileView] = useState(false);
@@ -236,6 +271,27 @@ export default function Home() {
       // Fetch Momentum data
       const momentumBalanceResult = await fetchMomentumBalance(wallet.account.address);
       setMomentumData(momentumBalanceResult);
+
+      // Fetch Finkeeper data
+      const finkeeperResponse = await fetch('https://finkeeper-okx.vercel.app/api/defi/positions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          walletAddressList: [
+            {
+              chainId: 784,
+              walletAddress: wallet.account.address
+            }
+          ]
+        })
+      });
+      
+      if (finkeeperResponse.ok) {
+        const finkeeperData = await finkeeperResponse.json();
+        setFinkeeperData(finkeeperData);
+      }
     } catch (error) {
       console.error('Error fetching assets:', error);
     } finally {
@@ -404,6 +460,9 @@ export default function Home() {
     }
     return <div>{JSON.stringify(result)}</div>;
   };
+
+  const [finkeeperData, setFinkeeperData] = useState<FinkeeperResponse | null>(null);
+  const [showFinkeeperPositions, setShowFinkeeperPositions] = useState<Record<number, boolean>>({});
 
   return (
     <div className="flex flex-row justify-between h-dvh bg-white dark:bg-zinc-900">
@@ -999,51 +1058,117 @@ export default function Home() {
               </div>
               
               {/* Bluefin section */}
-              <div className="mb-4 border border-zinc-200 dark:border-zinc-700 rounded-lg overflow-hidden">
-                <div className="flex items-center justify-between p-3 bg-zinc-50 dark:bg-zinc-900">
-                  <button 
-                    onClick={() => setShowBluefinPositions(!showBluefinPositions)}
-                    className="flex items-center gap-2 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors rounded px-2 py-1"
-                  >
-                    <Image 
-                      src="https://bluefin.io/images/square.png"
-                      alt="Bluefin Logo"
-                      width={16}
-                      height={16}
-                      className="rounded-sm"
-                    />
-                    <span className="font-medium text-zinc-900 dark:text-zinc-100">Bluefin</span>
-                    {showBluefinPositions ? (
-                      <ChevronDown className="h-4 w-4 text-zinc-500" />
-                    ) : (
-                      <ChevronRight className="h-4 w-4 text-zinc-500" />
-                    )}
-                  </button>
-                  <div className="flex items-center gap-2">
-                    <Link
-                      href="https://trade.bluefin.io/liquidity-pools"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="p-1 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded transition-colors"
-                      title="Open Bluefin"
+              {false && (
+                <div className="mb-4 border border-zinc-200 dark:border-zinc-700 rounded-lg overflow-hidden">
+                  <div className="flex items-center justify-between p-3 bg-zinc-50 dark:bg-zinc-900">
+                    <button 
+                      onClick={() => setShowBluefinPositions(!showBluefinPositions)}
+                      className="flex items-center gap-2 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors rounded px-2 py-1"
                     >
-                      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-zinc-500">
-                        <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
-                        <polyline points="15 3 21 3 21 9"/>
-                        <line x1="10" y1="14" x2="21" y2="3"/>
-                      </svg>
-                    </Link>
-                  </div>
-                </div>
-                
-                {showBluefinPositions && (
-                  <div className="p-3">
-                    <div className="text-center py-4 text-sm text-zinc-500">
-                      Coming soon - Bluefin integration
+                      <Image 
+                        src="https://bluefin.io/images/square.png"
+                        alt="Bluefin Logo"
+                        width={16}
+                        height={16}
+                        className="rounded-sm"
+                      />
+                      <span className="font-medium text-zinc-900 dark:text-zinc-100">Bluefin</span>
+                      {showBluefinPositions ? (
+                        <ChevronDown className="h-4 w-4 text-zinc-500" />
+                      ) : (
+                        <ChevronRight className="h-4 w-4 text-zinc-500" />
+                      )}
+                    </button>
+                    <div className="flex items-center gap-2">
+                      <Link
+                        href="https://trade.bluefin.io/liquidity-pools"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="p-1 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded transition-colors"
+                        title="Open Bluefin"
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-zinc-500">
+                          <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
+                          <polyline points="15 3 21 3 21 9"/>
+                          <line x1="10" y1="14" x2="21" y2="3"/>
+                        </svg>
+                      </Link>
                     </div>
                   </div>
-                )}
-              </div>
+                  
+                  {showBluefinPositions && (
+                    <div className="p-3">
+                      <div className="text-center py-4 text-sm text-zinc-500">
+                        Coming soon - Bluefin integration
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Finkeeper section */}
+              {finkeeperData?.data.walletIdPlatformList[0]?.platformList
+                .filter(platform => !['Scallop', 'Momentum'].includes(platform.platformName))
+                .map((platform, index) => (
+                <div key={index} className="mb-4 border border-zinc-200 dark:border-zinc-700 rounded-lg overflow-hidden">
+                  <div className="flex items-center justify-between p-3 bg-zinc-50 dark:bg-zinc-900">
+                    <button 
+                      onClick={() => setShowFinkeeperPositions(prev => ({
+                        ...prev,
+                        [platform.analysisPlatformId]: !prev[platform.analysisPlatformId]
+                      }))}
+                      className="flex items-center gap-2 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors rounded px-2 py-1"
+                    >
+                      <Image 
+                        src={platform.platformLogo}
+                        alt={`${platform.platformName} Logo`}
+                        width={16}
+                        height={16}
+                        className="rounded-sm"
+                      />
+                      <span className="font-medium text-zinc-900 dark:text-zinc-100">
+                        {platform.platformName} ${formatNumber(parseFloat(platform.currencyAmount))}
+                      </span>
+                      {showFinkeeperPositions[platform.analysisPlatformId] ? (
+                        <ChevronDown className="h-4 w-4 text-zinc-500" />
+                      ) : (
+                        <ChevronRight className="h-4 w-4 text-zinc-500" />
+                      )}
+                    </button>
+                    <div className="flex items-center gap-2">
+                      <Link
+                        href={platform.platformUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="p-1 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded transition-colors"
+                        title={`Open ${platform.platformName}`}
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-zinc-500">
+                          <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
+                          <polyline points="15 3 21 3 21 9"/>
+                          <line x1="10" y1="14" x2="21" y2="3"/>
+                        </svg>
+                      </Link>
+                    </div>
+                  </div>
+                  
+                  {showFinkeeperPositions[platform.analysisPlatformId] && (
+                    <div className="p-3">
+                      {isLoadingAssets ? (
+                        <div className="flex justify-center py-4">
+                          <span className="text-sm text-zinc-500">Loading positions...</span>
+                        </div>
+                      ) : (
+                        <div className="space-y-2">
+                          <div className="text-sm text-zinc-500">
+                            Active positions: {platform.investmentCount}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              ))}
             </div>
           </motion.div>
         )}
