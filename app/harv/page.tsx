@@ -23,8 +23,6 @@ import ReactMarkdown from 'react-markdown';
 import Image from "next/image";
 import { PieChartAssets } from '@/components/PieChartAssets';
 import { ProtocolPieChart } from '@/components/ProtocolPieChart';
-import { CameraView } from '@/components/camera-view';
-import { UsageView } from '@/components/usage-view';
 import { PoolsView } from '../components/chat/PoolsView';
 import { WalletView } from '../components/chat/WalletView';
 
@@ -522,16 +520,11 @@ export default function Home() {
     }
   };
 
-  // Обновляем предлагаемые действия
+  // Обновляем suggestedActions
   const suggestedActions = [
     { title: "Check", label: "Scallop Balance", action: "check-scallop-balance" },
     { title: "Check", label: "Momentum Balance", action: "check-momentum-balance" },
-    { title: "Show me", label: "Pie chart of my assets", action: "show-assets-pie-chart" },
-    {
-      title: "How much",
-      label: "electricity have I used this month?",
-      action: "Show electricity usage",
-    },
+    { title: "Show me", label: "Pie chart of my assets", action: "show-assets-pie-chart" }
   ];
 
   // Функция для отправки баланса Scallop в чат
@@ -643,14 +636,10 @@ export default function Home() {
     }
   }, [messages, showActionButtons]);
 
-  // Рендер результата tool-инвокации (аналогично TestChat)
+  // Обновляем renderToolResult
   const renderToolResult = (result: any) => {
     if (typeof result === 'object' && result.type === 'ui') {
       switch (result.component) {
-        case 'CameraView':
-          return <CameraView {...result.props} />;
-        case 'UsageView':
-          return <UsageView {...result.props} />;
         case 'PoolsView':
           return <PoolsView {...result.props} />;
         case 'WalletView':

@@ -1,7 +1,5 @@
 import { openai } from '@ai-sdk/openai';
 import { streamText } from 'ai';
-import { viewCamerasTool } from '@/app/tools/camera-tools';
-import { viewUsageTool } from '@/app/tools/usage-tools';
 import { viewPoolsTool } from '@/app/tools/pool-tools';
 import { viewWalletTool } from '@/app/tools/wallet-tools';
 
@@ -46,8 +44,6 @@ export async function POST(req: Request) {
       maxSteps: 5,
       system: `You are a crypto finance assistant. You help users with their crypto portfolio and investments.
       You can use the following tools:
-      - viewCameras: to view cameras
-      - viewUsage: to view resource usage
       - viewPools: to view liquidity pools
       - viewWallet: to view connected wallet address
 
@@ -60,8 +56,6 @@ export async function POST(req: Request) {
 
       Important: Always respond in the same language as the user's message. If the user writes in Russian, respond in Russian. If the user writes in English, respond in English.`,
       tools: {
-        viewCameras: viewCamerasTool,
-        viewUsage: viewUsageTool,
         viewPools: viewPoolsTool,
         viewWallet: viewWalletTool,
       },
