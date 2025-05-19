@@ -182,6 +182,9 @@ export default function Home() {
   const [showMomentumPositions, setShowMomentumPositions] = useState(false);
   const [showBluefinPositions, setShowBluefinPositions] = useState(false);
   const [isMobileView, setIsMobileView] = useState(false);
+  const [finkeeperData, setFinkeeperData] = useState<FinkeeperResponse | null>(null);
+  const [showFinkeeperPositions, setShowFinkeeperPositions] = useState<Record<number, boolean>>({});
+  const [isLoadingFinkeeper, setIsLoadingFinkeeper] = useState(false);
 
   const inputRef = useRef<HTMLInputElement>(null);
   const [messagesContainerRef, messagesEndRef] =
@@ -189,6 +192,59 @@ export default function Home() {
 
   // Add new state for total value
   const [totalTokenValue, setTotalTokenValue] = useState<number>(0);
+
+  // Функция для получения данных из Finkeeper
+  const fetchFinkeeperData = async (address: string) => {
+    setIsLoadingFinkeeper(true);
+    try {
+      const response = await fetch('https://finkeeper-okx.vercel.app/api/defi/positions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          walletAddressList: [
+            {
+              chainId: 784,
+              walletAddress: address
+            }
+          ]
+        })
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        setFinkeeperData(data);
+      }
+    } catch (error) {
+      console.error('Error fetching Finkeeper data:', error);
+    } finally {
+      setIsLoadingFinkeeper(false);
+    }
+  };
+
+  // Итоговая сумма всех активов (кошелёк + протоколы)
+  const totalAssets = useMemo(() => {
+    let sum = totalTokenValue;
+    // Scallop
+    if (scallopData) {
+      sum +=
+        parseFloat(scallopData.totalSupplyValue || "0") +
+        parseFloat(scallopData.totalCollateralValue || "0") +
+        parseFloat(scallopData.totalLockedScaValue || "0");
+    }
+    // Momentum
+    if (momentumData && momentumData.raw && Array.isArray(momentumData.raw)) {
+      sum += momentumData.raw.reduce((acc: number, pos: any) => acc + (pos.amount || 0), 0);
+    }
+    // Finkeeper
+    if (finkeeperData?.data.walletIdPlatformList[0]?.platformList) {
+      sum += finkeeperData.data.walletIdPlatformList[0].platformList
+        .filter(platform => !['Scallop', 'Momentum'].includes(platform.platformName))
+        .reduce((acc, platform) => acc + parseFloat(platform.currencyAmount), 0);
+    }
+    return sum;
+  }, [totalTokenValue, scallopData, momentumData, finkeeperData]);
 
   // Update total value when tokens change
   useEffect(() => {
@@ -273,25 +329,7 @@ export default function Home() {
       setMomentumData(momentumBalanceResult);
 
       // Fetch Finkeeper data
-      const finkeeperResponse = await fetch('https://finkeeper-okx.vercel.app/api/defi/positions', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          walletAddressList: [
-            {
-              chainId: 784,
-              walletAddress: wallet.account.address
-            }
-          ]
-        })
-      });
-      
-      if (finkeeperResponse.ok) {
-        const finkeeperData = await finkeeperResponse.json();
-        setFinkeeperData(finkeeperData);
-      }
+      await fetchFinkeeperData(wallet.account.address);
     } catch (error) {
       console.error('Error fetching assets:', error);
     } finally {
@@ -402,23 +440,6 @@ export default function Home() {
     setShowAssetPanel(!showAssetPanel);
   };
 
-  // Итоговая сумма всех активов (кошелёк + протоколы)
-  const totalAssets = useMemo(() => {
-    let sum = totalTokenValue;
-    // Scallop
-    if (scallopData) {
-      sum +=
-        parseFloat(scallopData.totalSupplyValue || "0") +
-        parseFloat(scallopData.totalCollateralValue || "0") +
-        parseFloat(scallopData.totalLockedScaValue || "0");
-    }
-    // Momentum
-    if (momentumData && momentumData.raw && Array.isArray(momentumData.raw)) {
-      sum += momentumData.raw.reduce((acc: number, pos: any) => acc + (pos.amount || 0), 0);
-    }
-    return sum;
-  }, [totalTokenValue, scallopData, momentumData]);
-
   // Функция для дисконнекта и сброса данных
   const handleDisconnect = () => {
     wallet.disconnect();
@@ -461,9 +482,6 @@ export default function Home() {
     return <div>{JSON.stringify(result)}</div>;
   };
 
-  const [finkeeperData, setFinkeeperData] = useState<FinkeeperResponse | null>(null);
-  const [showFinkeeperPositions, setShowFinkeeperPositions] = useState<Record<number, boolean>>({});
-
   return (
     <div className="flex flex-row justify-between h-dvh bg-white dark:bg-zinc-900">
       {/* Overlay для мобильного drawer */}
@@ -500,7 +518,7 @@ export default function Home() {
                     className="p-1 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded transition-colors"
                     title="Refresh all balances"
                   >
-                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-zinc-500">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={`text-zinc-500 ${(isLoadingAssets || isLoadingFinkeeper) ? 'animate-spin' : ''}`}>
                       <path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/>
                       <path d="M3 3v5h5"/>
                       <path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16"/>
@@ -1109,6 +1127,7 @@ export default function Home() {
               {/* Finkeeper section */}
               {finkeeperData?.data.walletIdPlatformList[0]?.platformList
                 .filter(platform => !['Scallop', 'Momentum'].includes(platform.platformName))
+                .sort((a, b) => parseFloat(b.currencyAmount) - parseFloat(a.currencyAmount))
                 .map((platform, index) => (
                 <div key={index} className="mb-4 border border-zinc-200 dark:border-zinc-700 rounded-lg overflow-hidden">
                   <div className="flex items-center justify-between p-3 bg-zinc-50 dark:bg-zinc-900">
