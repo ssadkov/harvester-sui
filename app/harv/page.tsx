@@ -25,6 +25,7 @@ import { PieChartAssets } from '@/components/PieChartAssets';
 import { ProtocolPieChart } from '@/components/ProtocolPieChart';
 import { PoolsView } from '../components/chat/PoolsView';
 import { WalletView } from '../components/chat/WalletView';
+import { TokenView } from '../components/chat/TokenView';
 
 // Define Momentum position interface
 interface MomentumPosition {
@@ -231,18 +232,7 @@ type FinkeeperData = {
 } & FinkeeperPlatform;
 
 export default function Home() {
-  const { messages, input, handleInputChange, handleSubmit } = useChat({
-    api: '/api/chat',
-    maxSteps: 5,
-    onFinish: (message) => {
-      console.log('Chat finished:', message);
-    },
-    onError: (error) => {
-      console.error('Chat error:', error);
-    }
-  });
   const wallet = useWallet();
-
   const [showActionButtons, setShowActionButtons] = useState(false);
   const [balanceData, setBalanceData] = useState<{
     formatted: string;
@@ -256,6 +246,29 @@ export default function Home() {
   const [isLoadingMomentum, setIsLoadingMomentum] = useState(false);
   const [showRawData, setShowRawData] = useState(false);
   
+  const { messages, input, handleInputChange, handleSubmit } = useChat({
+    api: '/api/chat',
+    maxSteps: 5,
+    body: {
+      wallet: wallet.connected ? {
+        connected: wallet.connected,
+        account: wallet.account ? {
+          address: wallet.account.address,
+          publicKey: wallet.account.publicKey
+        } : null
+      } : null
+    },
+    onFinish: (message) => {
+      console.log('Chat finished:', message);
+    },
+    onError: (error) => {
+      console.error('Chat error:', error);
+    },
+    onResponse: (response) => {
+      console.log('Chat response:', response);
+    }
+  });
+
   // Asset panel states
   const [userTokens, setUserTokens] = useState<Token[]>([]);
   const [scallopData, setScallopData] = useState<ScallopData | null>(null);
@@ -644,11 +657,21 @@ export default function Home() {
           return <PoolsView {...result.props} />;
         case 'WalletView':
           return <WalletView {...result.props} />;
+        case 'TokenView':
+          return <TokenView {...result.props} />;
         default:
           return <div>Неизвестный компонент: {result.component}</div>;
       }
     }
     return <div>{JSON.stringify(result)}</div>;
+  };
+
+  // Добавляем обработчик отправки формы
+  const onSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    console.log('Submitting message:', input);
+    setShowActionButtons(false);
+    handleSubmit(e);
   };
 
   return (
@@ -1293,7 +1316,7 @@ export default function Home() {
           )}
         </AnimatePresence>
 
-        <form onSubmit={(e) => { setShowActionButtons(false); handleSubmit(e); }} className="flex flex-col gap-2 relative items-center w-full md:max-w-[750px] mx-auto">
+        <form onSubmit={onSubmit} className="flex flex-col gap-2 relative items-center w-full md:max-w-[750px] mx-auto">
           <div className="flex w-full shadow-lg">
             <input
               value={input}

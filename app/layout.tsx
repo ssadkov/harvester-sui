@@ -7,7 +7,6 @@ import { Analytics } from '@vercel/analytics/react';
 import "@suiet/wallet-kit/style.css";
 
 export const metadata: Metadata = {
-  metadataBase: new URL("https://ai-sdk-preview-rsc-genui.vercel.dev"),
   title: "SUI Harvester AI",
   description: "Yield farming AI aggregator for SUI",
   icons: {
