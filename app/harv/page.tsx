@@ -274,6 +274,9 @@ export default function Home() {
   const [finkeeperDetailData, setFinkeeperDetailData] = useState<Record<number, FinkeeperDetailResponse>>({});
   const [isLoadingFinkeeperDetail, setIsLoadingFinkeeperDetail] = useState<Record<number, boolean>>({});
 
+  // Добавляем состояние для фильтрации
+  const [hideSmallAssets, setHideSmallAssets] = useState(true);
+
   // Создаем массив всех протоколов для сортировки
   const sortedProtocols = useMemo(() => {
     const protocols: ProtocolData[] = [];
@@ -830,45 +833,51 @@ export default function Home() {
                       </div>
                     ) : (userTokens || []).length > 0 ? (
                       <div className="space-y-2">
-                        
                         <div className="space-y-2">
-                          {(userTokens || []).map((token) => (
-                            <div key={token.id} className="flex items-center justify-between p-2 rounded-lg bg-zinc-50 dark:bg-zinc-800/50">
-                              <div className="flex items-center gap-2">
-                                {token.iconUrl ? (
-                                  <div className="w-6 h-6 relative rounded-full overflow-hidden bg-zinc-100 dark:bg-zinc-800">
-                                    <Image
-                                      src={token.iconUrl}
-                                      alt={token.symbol}
-                                      fill
-                                      className="object-contain"
-                                    />
+                          {(userTokens || [])
+                            .filter(token => !hideSmallAssets || parseFloat(token.usdPrice || '0') >= 1)
+                            .map((token) => (
+                              <div key={token.id} className="flex items-center justify-between p-2 rounded-lg bg-zinc-50 dark:bg-zinc-800/50">
+                                <div className="flex items-center gap-2">
+                                  {token.iconUrl ? (
+                                    <div className="w-6 h-6 relative rounded-full overflow-hidden bg-zinc-100 dark:bg-zinc-800">
+                                      <Image
+                                        src={token.iconUrl}
+                                        alt={token.symbol}
+                                        fill
+                                        className="object-contain"
+                                      />
+                                    </div>
+                                  ) : (
+                                    <div className="w-6 h-6 rounded-full bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center">
+                                      <span className="text-xs font-medium text-zinc-500">
+                                        {(token.symbol && token.symbol.length > 0) ? token.symbol[0] : '?'}
+                                      </span>
+                                    </div>
+                                  )}
+                                  <div>
+                                    <p className="text-sm font-medium">{token.symbol}</p>
+                                    <p className="text-xs text-zinc-500">{token.name}</p>
                                   </div>
-                                ) : (
-                                  <div className="w-6 h-6 rounded-full bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center">
-                                    <span className="text-xs font-medium text-zinc-500">
-                                      {(token.symbol && token.symbol.length > 0) ? token.symbol[0] : '?'}
-                                    </span>
-                                  </div>
-                                )}
-                                <div>
-                                  <p className="text-sm font-medium">{token.symbol}</p>
-                                  <p className="text-xs text-zinc-500">{token.name}</p>
+                                </div>
+                                <div className="text-right">
+                                  <p className="text-sm font-medium">
+                                    {formatTokenBalance(token.balance, token.decimals)} {token.symbol}
+                                  </p>
+                                  {token.usdPrice && (
+                                    <p className="text-xs text-zinc-500">
+                                      {formatUSDValue(token.usdPrice)}
+                                    </p>
+                                  )}
                                 </div>
                               </div>
-                              <div className="text-right">
-                                <p className="text-sm font-medium">
-                                  {formatTokenBalance(token.balance, token.decimals)} {token.symbol}
-                                </p>
-                                {token.usdPrice && (
-                                  <p className="text-xs text-zinc-500">
-                                    {formatUSDValue(token.usdPrice)}
-                                  </p>
-                                )}
-                              </div>
-                            </div>
-                          ))}
+                            ))}
                         </div>
+                        {hideSmallAssets && (userTokens || []).filter(token => parseFloat(token.usdPrice || '0') < 1).length > 0 && (
+                          <div className="text-xs text-zinc-500 mt-2">
+                            {userTokens.filter(token => parseFloat(token.usdPrice || '0') < 1).length} assets hidden
+                          </div>
+                        )}
                       </div>
                     ) : wallet.connected ? (
                       <div className="text-center py-4 text-sm text-zinc-500">
@@ -1029,76 +1038,122 @@ export default function Home() {
                             </div>
                           ) : finkeeperDetailData[protocol.data.analysisPlatformId]?.data?.walletIdPlatformDetailList[0]?.networkHoldVoList[0]?.investTokenBalanceVoList ? (
                             <div className="space-y-3">
-                              {finkeeperDetailData[protocol.data.analysisPlatformId].data.walletIdPlatformDetailList[0].networkHoldVoList[0].investTokenBalanceVoList.map((investment: FinkeeperInvestment, index: number) => (
-                                <div key={index} className="border border-zinc-200 dark:border-zinc-700 rounded p-2">
-                                  <div className="flex justify-between items-center mb-1">
-                                    <div>
-                                      <div className="flex items-center gap-1">
-                                        <span className={`text-xs px-1.5 py-0.5 rounded ${
-                                          investment.investType === 1 
-                                            ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
-                                            : 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200'
-                                        }`}>
-                                          {investment.investName}
-                                        </span>
-                                        <span className="text-sm font-medium">{investment.investmentName}</span>
-                                      </div>
-                                    </div>
-                                    <div className="text-right">
-                                      <p className="text-sm font-medium text-zinc-900 dark:text-zinc-100">
-                                        ${formatNumber(investment.totalValue)}
-                                      </p>
-                                    </div>
-                                  </div>
-                                  <div className="space-y-1 mt-2">
-                                    {investment.assetsTokenList.map((token: FinkeeperTokenInfo, tokenIndex: number) => (
-                                      <div key={tokenIndex} className="flex justify-between items-center text-xs">
+                              {finkeeperDetailData[protocol.data.analysisPlatformId].data.walletIdPlatformDetailList[0].networkHoldVoList[0].investTokenBalanceVoList
+                                .filter(investment => !hideSmallAssets || parseFloat(investment.totalValue) >= 1)
+                                .map((investment: FinkeeperInvestment, index: number) => (
+                                  <div key={index} className="border border-zinc-200 dark:border-zinc-700 rounded p-2">
+                                    <div className="flex justify-between items-center mb-1">
+                                      <div>
                                         <div className="flex items-center gap-1">
-                                          <Image 
-                                            src={token.tokenLogo} 
-                                            alt={token.tokenSymbol}
-                                            width={16}
-                                            height={16}
-                                            className="rounded-full"
-                                          />
-                                          <span>{token.tokenSymbol}</span>
-                                        </div>
-                                        <div className="text-right">
-                                          <p>{formatNumber(token.coinAmount)} {token.tokenSymbol}</p>
-                                          <p className="text-zinc-500">${formatNumber(token.currencyAmount)}</p>
+                                          <span className={`text-xs px-1.5 py-0.5 rounded ${
+                                            investment.investType === 1 
+                                              ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
+                                              : 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200'
+                                          }`}>
+                                            {investment.investName}
+                                          </span>
+                                          <span className="text-sm font-medium">{investment.investmentName}</span>
                                         </div>
                                       </div>
-                                    ))}
-                                  </div>
-                                  {investment.rewardDefiTokenInfo.length > 0 && (
-                                    <div className="mt-2 pt-2 border-t border-zinc-200 dark:border-zinc-700">
-                                      <p className="text-xs text-emerald-600 dark:text-emerald-400 mb-1">Rewards:</p>
-                                      {investment.rewardDefiTokenInfo.map((reward: FinkeeperRewardInfo, rewardIndex: number) => (
-                                        <div key={rewardIndex} className="space-y-1">
-                                          {reward.baseDefiTokenInfos.map((token: FinkeeperTokenInfo, tokenIndex: number) => (
-                                            <div key={tokenIndex} className="flex justify-between items-center text-xs">
-                                              <div className="flex items-center gap-1">
-                                                <Image 
-                                                  src={token.tokenLogo} 
-                                                  alt={token.tokenSymbol}
-                                                  width={16}
-                                                  height={16}
-                                                  className="rounded-full"
-                                                />
-                                                <span>{token.tokenSymbol}</span>
-                                              </div>
-                                              <div className="text-right">
-                                                <p>{formatNumber(token.coinAmount)} {token.tokenSymbol}</p>
-                                                <p className="text-zinc-500">${formatNumber(token.currencyAmount)}</p>
-                                              </div>
-                                            </div>
-                                          ))}
-                                        </div>
-                                      ))}
+                                      <div className="text-right">
+                                        <p className="text-sm font-medium text-zinc-900 dark:text-zinc-100">
+                                          ${formatNumber(investment.totalValue)}
+                                        </p>
+                                      </div>
                                     </div>
-                                  )}
-                                </div>
-                              ))}
+                                    <div className="space-y-1 mt-2">
+                                      {investment.assetsTokenList
+                                        .filter(token => !hideSmallAssets || parseFloat(token.currencyAmount) >= 1)
+                                        .map((token: FinkeeperTokenInfo, tokenIndex: number) => (
+                                          <div key={tokenIndex} className="flex justify-between items-center text-xs">
+                                            <div className="flex items-center gap-1">
+                                              <Image 
+                                                src={token.tokenLogo} 
+                                                alt={token.tokenSymbol}
+                                                width={16}
+                                                height={16}
+                                                className="rounded-full"
+                                              />
+                                              <span>{token.tokenSymbol}</span>
+                                            </div>
+                                            <div className="text-right">
+                                              <p>{formatNumber(token.coinAmount)} {token.tokenSymbol}</p>
+                                              <p className="text-zinc-500">${formatNumber(token.currencyAmount)}</p>
+                                            </div>
+                                          </div>
+                                        ))}
+                                    </div>
+                                    {investment.rewardDefiTokenInfo.length > 0 && (
+                                      <div className="mt-2 pt-2 border-t border-zinc-200 dark:border-zinc-700">
+                                        {(() => {
+                                          const visibleRewards = investment.rewardDefiTokenInfo
+                                            .flatMap(reward => reward.baseDefiTokenInfos)
+                                            .filter(token => !hideSmallAssets || parseFloat(token.currencyAmount) >= 1);
+                                          
+                                          if (visibleRewards.length === 0 && hideSmallAssets) {
+                                            return (
+                                              <div className="flex items-center gap-1">
+                                                <p className="text-xs text-emerald-600 dark:text-emerald-400">Rewards:</p>
+                                                <span className="text-xs text-zinc-500">&lt;$1</span>
+                                              </div>
+                                            );
+                                          }
+                                          
+                                          return (
+                                            <>
+                                              <p className="text-xs text-emerald-600 dark:text-emerald-400 mb-1">Rewards:</p>
+                                              {investment.rewardDefiTokenInfo.map((reward: FinkeeperRewardInfo, rewardIndex: number) => (
+                                                <div key={rewardIndex} className="space-y-1">
+                                                  {reward.baseDefiTokenInfos
+                                                    .filter(token => !hideSmallAssets || parseFloat(token.currencyAmount) >= 1)
+                                                    .map((token: FinkeeperTokenInfo, tokenIndex: number) => (
+                                                      <div key={tokenIndex} className="flex justify-between items-center text-xs">
+                                                        <div className="flex items-center gap-1">
+                                                          <Image 
+                                                            src={token.tokenLogo} 
+                                                            alt={token.tokenSymbol}
+                                                            width={16}
+                                                            height={16}
+                                                            className="rounded-full"
+                                                          />
+                                                          <span>{token.tokenSymbol}</span>
+                                                        </div>
+                                                        <div className="text-right">
+                                                          <p>{formatNumber(token.coinAmount)} {token.tokenSymbol}</p>
+                                                          <p className="text-zinc-500">${formatNumber(token.currencyAmount)}</p>
+                                                        </div>
+                                                      </div>
+                                                    ))}
+                                                </div>
+                                              ))}
+                                            </>
+                                          );
+                                        })()}
+                                      </div>
+                                    )}
+                                  </div>
+                                ))}
+                              {hideSmallAssets && (() => {
+                                const hiddenInvestments = finkeeperDetailData[protocol.data.analysisPlatformId].data.walletIdPlatformDetailList[0].networkHoldVoList[0].investTokenBalanceVoList
+                                  .filter(investment => parseFloat(investment.totalValue) < 1).length;
+                                const hiddenTokens = finkeeperDetailData[protocol.data.analysisPlatformId].data.walletIdPlatformDetailList[0].networkHoldVoList[0].investTokenBalanceVoList
+                                  .flatMap(investment => investment.assetsTokenList)
+                                  .filter(token => parseFloat(token.currencyAmount) < 1).length;
+                                const hiddenRewards = finkeeperDetailData[protocol.data.analysisPlatformId].data.walletIdPlatformDetailList[0].networkHoldVoList[0].investTokenBalanceVoList
+                                  .flatMap(investment => investment.rewardDefiTokenInfo)
+                                  .flatMap(reward => reward.baseDefiTokenInfos)
+                                  .filter(token => parseFloat(token.currencyAmount) < 1).length;
+                                
+                                const totalHidden = hiddenInvestments + hiddenTokens + hiddenRewards;
+                                if (totalHidden > 0) {
+                                  return (
+                                    <div className="text-xs text-zinc-500 mt-2">
+                                      {totalHidden} assets hidden
+                                    </div>
+                                  );
+                                }
+                                return null;
+                              })()}
                             </div>
                           ) : (
                             <div className="text-sm text-zinc-500">
@@ -1276,6 +1331,19 @@ export default function Home() {
             </Button>
           </div>
         </form>
+
+        {/* Добавляем переключатель внизу панели */}
+        <div className="fixed bottom-4 left-4 z-50">
+          <label className="flex items-center gap-2 text-sm text-zinc-500 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={hideSmallAssets}
+              onChange={(e) => setHideSmallAssets(e.target.checked)}
+              className="rounded border-zinc-300 dark:border-zinc-600"
+            />
+            Hide assets &lt;$1
+          </label>
+        </div>
       </div>
     </div>
   );
