@@ -146,6 +146,92 @@ interface FinkeeperResponse {
   };
 }
 
+// Интерфейсы для детальной информации Finkeeper
+interface FinkeeperTokenInfo {
+  tokenSymbol: string;
+  tokenLogo: string;
+  coinAmount: string;
+  currencyAmount: string;
+  tokenPrecision: number;
+  tokenAddress: string;
+  network: string;
+}
+
+interface FinkeeperRewardInfo {
+  baseDefiTokenInfos: FinkeeperTokenInfo[];
+  rewardType: number;
+}
+
+interface FinkeeperInvestment {
+  investmentName: string;
+  investmentKey: string;
+  investType: number;
+  investName: string;
+  assetsTokenList: FinkeeperTokenInfo[];
+  rewardDefiTokenInfo: FinkeeperRewardInfo[];
+  totalValue: string;
+}
+
+interface FinkeeperNetworkHold {
+  network: string;
+  chainId: number;
+  totalAssert: string;
+  investTokenBalanceVoList: FinkeeperInvestment[];
+  availableRewards: any[];
+  airDropRewardInfo: any[];
+}
+
+interface FinkeeperPlatformDetail {
+  networkHoldVoList: FinkeeperNetworkHold[];
+  accountId: string;
+}
+
+interface FinkeeperDetailResponse {
+  code: number;
+  msg: string;
+  data: {
+    walletIdPlatformDetailList: FinkeeperPlatformDetail[];
+  };
+}
+
+// Интерфейсы для данных протоколов
+type ProtocolData = 
+  | {
+      type: 'scallop';
+      name: string;
+      value: number;
+      data: ScallopData;
+      logo: string;
+      url: string;
+    }
+  | {
+      type: 'momentum';
+      name: string;
+      value: number;
+      data: MomentumData;
+      logo: string;
+      url: string;
+    }
+  | {
+      type: 'finkeeper';
+      name: string;
+      value: number;
+      data: FinkeeperData;
+      logo: string;
+      url: string;
+    };
+
+interface MomentumData {
+  formatted: string;
+  raw: any[];
+}
+
+// Тип для проверки Finkeeper данных
+type FinkeeperData = {
+  analysisPlatformId: number;
+  investmentCount: number;
+} & FinkeeperPlatform;
+
 export default function Home() {
   const { messages, input, handleInputChange, handleSubmit } = useChat({
     api: '/api/chat',
@@ -185,6 +271,69 @@ export default function Home() {
   const [finkeeperData, setFinkeeperData] = useState<FinkeeperResponse | null>(null);
   const [showFinkeeperPositions, setShowFinkeeperPositions] = useState<Record<number, boolean>>({});
   const [isLoadingFinkeeper, setIsLoadingFinkeeper] = useState(false);
+  const [finkeeperDetailData, setFinkeeperDetailData] = useState<Record<number, FinkeeperDetailResponse>>({});
+  const [isLoadingFinkeeperDetail, setIsLoadingFinkeeperDetail] = useState<Record<number, boolean>>({});
+
+  // Создаем массив всех протоколов для сортировки
+  const sortedProtocols = useMemo(() => {
+    const protocols: ProtocolData[] = [];
+
+    // Добавляем Scallop
+    if (scallopData) {
+      const scallopValue = 
+        parseFloat(scallopData.totalSupplyValue || "0") +
+        parseFloat(scallopData.totalCollateralValue || "0") +
+        parseFloat(scallopData.totalLockedScaValue || "0");
+      
+      if (scallopValue > 0) {
+        protocols.push({
+          type: 'scallop',
+          name: 'Scallop',
+          value: scallopValue,
+          data: scallopData,
+          logo: 'https://app.scallop.io/images/logo-192.png',
+          url: 'https://app.scallop.io/referral?ref=670e31ea50cc539a9a3e2f84'
+        });
+      }
+    }
+
+    // Добавляем Momentum
+    if (momentumData && momentumData.raw && Array.isArray(momentumData.raw)) {
+      const momentumValue = momentumData.raw.reduce((acc: number, pos: any) => acc + (pos.amount || 0), 0);
+      if (momentumValue > 0) {
+        protocols.push({
+          type: 'momentum',
+          name: 'Momentum',
+          value: momentumValue,
+          data: momentumData,
+          logo: 'https://app.mmt.finance/assets/images/momentum-logo-sq.svg',
+          url: 'https://app.mmt.finance/leaderboard?refer=8EQO6A'
+        });
+      }
+    }
+
+    // Добавляем протоколы из Finkeeper
+    if (finkeeperData?.data.walletIdPlatformList[0]?.platformList) {
+      finkeeperData.data.walletIdPlatformList[0].platformList
+        .filter(platform => !['Scallop', 'Momentum'].includes(platform.platformName))
+        .forEach(platform => {
+          const value = parseFloat(platform.currencyAmount);
+          if (value > 0) {
+            protocols.push({
+              type: 'finkeeper',
+              name: platform.platformName,
+              value: value,
+              data: platform as FinkeeperData,
+              logo: platform.platformLogo,
+              url: platform.platformUrl
+            });
+          }
+        });
+    }
+
+    // Сортируем по значению (по убыванию)
+    return protocols.sort((a, b) => b.value - a.value);
+  }, [scallopData, momentumData, finkeeperData]);
 
   const inputRef = useRef<HTMLInputElement>(null);
   const [messagesContainerRef, messagesEndRef] =
@@ -220,6 +369,28 @@ export default function Home() {
       console.error('Error fetching Finkeeper data:', error);
     } finally {
       setIsLoadingFinkeeper(false);
+    }
+  };
+
+  // Обновляем функцию получения детальной информации
+  const fetchFinkeeperDetail = async (platformId: number, address: string) => {
+    setIsLoadingFinkeeperDetail(prev => ({ ...prev, [platformId]: true }));
+    try {
+      const response = await fetch(`https://finkeeper-okx.vercel.app/api/defi/positions?platformId=${platformId}&chainId=784&walletAddress=${address}`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        }
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        setFinkeeperDetailData(prev => ({ ...prev, [platformId]: data }));
+      }
+    } catch (error) {
+      console.error('Error fetching Finkeeper detail:', error);
+    } finally {
+      setIsLoadingFinkeeperDetail(prev => ({ ...prev, [platformId]: false }));
     }
   };
 
@@ -447,6 +618,12 @@ export default function Home() {
     setScallopData(null);
     setMomentumData(null);
     setTotalTokenValue(0);
+    setFinkeeperData(null);
+    setShowFinkeeperPositions({});
+    setShowScallopPositions(false);
+    setShowMomentumPositions(false);
+    setShowBluefinPositions(false);
+    setShowTokens(false);
   };
 
   // Показывать меню при первой загрузке, если сообщений нет
@@ -706,181 +883,216 @@ export default function Home() {
                 )}
               </div>
               
-              {/* Scallop section */}
-              <div className="mb-4 border border-zinc-200 dark:border-zinc-700 rounded-lg overflow-hidden">
-                <div className="flex items-center justify-between p-3 bg-zinc-50 dark:bg-zinc-900">
-                  <button 
-                    onClick={() => setShowScallopPositions(!showScallopPositions)}
-                    className="flex items-center gap-2 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors rounded px-2 py-1"
-                  >
-                    <Image 
-                      src="https://app.scallop.io/images/logo-192.png"
-                      alt="Scallop Logo"
-                      width={16}
-                      height={16}
-                      className="rounded-sm"
-                    />
-                    <span className="font-medium text-zinc-900 dark:text-zinc-100">
-                      Scallop {scallopData ? 
-                        `$${formatNumber(
-                          parseFloat(scallopData.totalSupplyValue || "0") +
-                          parseFloat(scallopData.totalCollateralValue || "0") +
-                          parseFloat(scallopData.totalLockedScaValue || "0")
-                        )}` : 
-                        ''
-                      }
-                    </span>
-                    {showScallopPositions ? (
-                      <ChevronDown className="h-4 w-4 text-zinc-500" />
-                    ) : (
-                      <ChevronRight className="h-4 w-4 text-zinc-500" />
-                    )}
-                  </button>
-                  <div className="flex items-center gap-2">
-                    <Link
-                      href="https://app.scallop.io/referral?ref=670e31ea50cc539a9a3e2f84"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="p-1 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded transition-colors"
-                      title="Open Scallop"
+              {/* Protocol sections */}
+              {sortedProtocols.map((protocol, index) => (
+                <div key={index} className="mb-4 border border-zinc-200 dark:border-zinc-700 rounded-lg overflow-hidden">
+                  <div className="flex items-center justify-between p-3 bg-zinc-50 dark:bg-zinc-900">
+                    <button 
+                      onClick={() => {
+                        if (protocol.type === 'scallop') {
+                          setShowScallopPositions(!showScallopPositions);
+                        } else if (protocol.type === 'momentum') {
+                          setShowMomentumPositions(!showMomentumPositions);
+                        } else if (protocol.type === 'finkeeper' && 'analysisPlatformId' in protocol.data) {
+                          setShowFinkeeperPositions(prev => ({
+                            ...prev,
+                            [protocol.data.analysisPlatformId]: !prev[protocol.data.analysisPlatformId]
+                          }));
+                          if (!showFinkeeperPositions[protocol.data.analysisPlatformId] && wallet.account) {
+                            fetchFinkeeperDetail(protocol.data.analysisPlatformId, wallet.account.address);
+                          }
+                        }
+                      }}
+                      className="flex items-center gap-2 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors rounded px-2 py-1"
                     >
-                      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-zinc-500">
-                        <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
-                        <polyline points="15 3 21 3 21 9"/>
-                        <line x1="10" y1="14" x2="21" y2="3"/>
-                      </svg>
-                    </Link>
+                      <Image 
+                        src={protocol.logo}
+                        alt={`${protocol.name} Logo`}
+                        width={16}
+                        height={16}
+                        className="rounded-sm"
+                      />
+                      <span className="font-medium text-zinc-900 dark:text-zinc-100">
+                        {protocol.name} ${formatNumber(protocol.value)}
+                      </span>
+                      {((protocol.type === 'scallop' && showScallopPositions) ||
+                        (protocol.type === 'momentum' && showMomentumPositions) ||
+                        (protocol.type === 'finkeeper' && 'analysisPlatformId' in protocol.data && showFinkeeperPositions[protocol.data.analysisPlatformId])) ? (
+                        <ChevronDown className="h-4 w-4 text-zinc-500" />
+                      ) : (
+                        <ChevronRight className="h-4 w-4 text-zinc-500" />
+                      )}
+                    </button>
+                    <div className="flex items-center gap-2">
+                      <Link
+                        href={protocol.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="p-1 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded transition-colors"
+                        title={`Open ${protocol.name}`}
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-zinc-500">
+                          <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
+                          <polyline points="15 3 21 3 21 9"/>
+                          <line x1="10" y1="14" x2="21" y2="3"/>
+                        </svg>
+                      </Link>
+                    </div>
                   </div>
-                </div>
-                
-                {showScallopPositions && (
-                  <div className="p-3">
-                    {isLoadingAssets ? (
-                      <div className="flex justify-center py-4">
-                        <span className="text-sm text-zinc-500">Loading positions...</span>
-                      </div>
-                    ) : scallopData ? (
-                      <div className="space-y-4">
-                        {/* Summary section - removed, now in header */}
-                        
-                        {/* Supplied Assets */}
-                        {scallopData.lendings && scallopData.lendings.length > 0 && (
-                          <div>
-                            <h4 className="text-xs font-medium mb-2 text-zinc-500">Supplied Assets</h4>
-                            <div className="space-y-2">
-                              {scallopData.lendings.map((lending, index) => (
-                                <div key={index} className="flex justify-between items-center">
-                                  <div>
-                                    <div className="flex items-center gap-1">
-                                      <span className="text-xs px-1.5 py-0.5 rounded bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
-                                        Supply
-                                      </span>
-                                      <span className="text-sm font-medium text-zinc-900 dark:text-zinc-100">
-                                        {lending.symbol}
-                                      </span>
+                  
+                  {((protocol.type === 'scallop' && showScallopPositions) ||
+                    (protocol.type === 'momentum' && showMomentumPositions) ||
+                    (protocol.type === 'finkeeper' && 'analysisPlatformId' in protocol.data && showFinkeeperPositions[protocol.data.analysisPlatformId])) && (
+                    <div className="p-3">
+                      {isLoadingAssets ? (
+                        <div className="flex justify-center py-4">
+                          <span className="text-sm text-zinc-500">Loading positions...</span>
+                        </div>
+                      ) : protocol.type === 'scallop' && 'lendings' in protocol.data ? (
+                        // Scallop content
+                        <div className="space-y-4">
+                          {protocol.data.lendings && protocol.data.lendings.length > 0 && (
+                            <div>
+                              <h4 className="text-xs font-medium mb-2 text-zinc-500">Supplied Assets</h4>
+                              <div className="space-y-2">
+                                {protocol.data.lendings.map((lending: any, index: number) => (
+                                  <div key={index} className="flex justify-between items-center">
+                                    <div>
+                                      <div className="flex items-center gap-1">
+                                        <span className="text-xs px-1.5 py-0.5 rounded bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
+                                          Supply
+                                        </span>
+                                        <span className="text-sm font-medium text-zinc-900 dark:text-zinc-100">
+                                          {lending.symbol}
+                                        </span>
+                                      </div>
+                                      <p className="text-xs text-zinc-500">{formatNumber(lending.suppliedCoin)}</p>
                                     </div>
-                                    <p className="text-xs text-zinc-500">{formatNumber(lending.suppliedCoin)}</p>
+                                    <div className="text-right">
+                                      <p className="text-sm font-medium text-zinc-900 dark:text-zinc-100">
+                                        ${formatNumber(parseFloat(lending.suppliedValue))}
+                                      </p>
+                                      <p className="text-xs text-zinc-500">
+                                        APY: {(parseFloat(lending.supplyApy) * 100).toFixed(2)}%
+                                      </p>
+                                    </div>
                                   </div>
-                                  <div className="text-right">
-                                    <p className="text-sm font-medium text-zinc-900 dark:text-zinc-100">
-                                      ${formatNumber(parseFloat(lending.suppliedValue))}
-                                    </p>
-                                    <p className="text-xs text-zinc-500">
-                                      APY: {(parseFloat(lending.supplyApy) * 100).toFixed(2)}%
-                                    </p>
-                                  </div>
-                                </div>
-                              ))}
+                                ))}
+                              </div>
                             </div>
-                          </div>
-                        )}
-                        
-                        {/* Borrowings & Collateral */}
-                        {scallopData.borrowings && scallopData.borrowings.length > 0 && (
-                          <div>
-                            <h4 className="text-xs font-medium mb-2 text-zinc-500">Collateral & Borrowings</h4>
-                            <div className="space-y-3">
-                              {scallopData.borrowings.map((position, posIndex) => (
-                                <div key={posIndex} className="border border-zinc-200 dark:border-zinc-700 rounded p-2">
-                                  {/* Collaterals */}
-                                  {position.collaterals.map((collateral, collIndex) => (
-                                    <div key={`coll-${posIndex}-${collIndex}`} className="flex justify-between items-center mb-1">
-                                      <div>
-                                        <div className="flex items-center gap-1">
-                                          <span className="text-xs px-1.5 py-0.5 rounded bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">
-                                            Collateral
-                                          </span>
-                                          <span className="text-sm font-medium text-zinc-900 dark:text-zinc-100">
-                                            {collateral.symbol}
-                                          </span>
-                                        </div>
-                                        <p className="text-xs text-zinc-500">{formatNumber(collateral.depositedCoin)}</p>
-                                      </div>
-                                      <div className="text-right">
-                                        <p className="text-sm font-medium text-zinc-900 dark:text-zinc-100">
-                                          ${formatNumber(collateral.depositedValueInUsd)}
-                                        </p>
-                                      </div>
-                                    </div>
-                                  ))}
-                                  
-                                  {/* Risk level */}
-                                  <div className="flex items-center my-1">
-                                    <span className="text-xs text-zinc-500 mr-1">Health:</span>
-                                    {position.riskLevel === 0 && (
-                                      <span className="text-xs px-1.5 py-0.5 rounded bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
-                                        Excellent
-                                      </span>
-                                    )}
-                                    {position.riskLevel === 1 && (
-                                      <span className="text-xs px-1.5 py-0.5 rounded bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">
-                                        Low
-                                      </span>
-                                    )}
-                                    {position.riskLevel === 2 && (
-                                      <span className="text-xs px-1.5 py-0.5 rounded bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200">
-                                        Medium
-                                      </span>
-                                    )}
-                                    {position.riskLevel === 3 && (
-                                      <span className="text-xs px-1.5 py-0.5 rounded bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200">
-                                        High
-                                      </span>
-                                    )}
-                                    {position.riskLevel >= 4 && (
-                                      <span className="text-xs px-1.5 py-0.5 rounded bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200">
-                                        Very High
-                                      </span>
-                                    )}
+                          )}
+                          {/* Rest of Scallop content */}
+                        </div>
+                      ) : protocol.type === 'momentum' && 'raw' in protocol.data ? (
+                        // Momentum content
+                        <div className="space-y-3">
+                          {protocol.data.raw.map((position: any, index: number) => (
+                            <div key={index} className="border border-zinc-200 dark:border-zinc-700 rounded p-2">
+                              <div className="flex justify-between items-center mb-1">
+                                <div>
+                                  <div className="flex items-center gap-1">
+                                    <span className={`text-xs px-1.5 py-0.5 rounded ${
+                                      position.status === 'In Range' 
+                                        ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
+                                        : 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200'
+                                    }`}>
+                                      {position.status}
+                                    </span>
                                   </div>
-                                  
-                                  {/* Available to borrow */}
-                                  {position.availableCollateralInUsd > 0 && (
-                                    <div className="text-xs text-zinc-500 my-1">
-                                      Available: ${formatNumber(position.availableCollateralInUsd)}
-                                    </div>
+                                  <p className="text-xs text-zinc-500">Range: {formatNumber(position.lowerPrice)} - {formatNumber(position.upperPrice)}</p>
+                                </div>
+                                <div className="text-right">
+                                  <p className="text-sm font-medium text-zinc-900 dark:text-zinc-100">
+                                    ${formatNumber(position.amount)}
+                                  </p>
+                                  {(position.feeAmountXUsd + position.feeAmountYUsd) > 0 && (
+                                    <p className="text-xs text-zinc-500">
+                                      Fees: ${formatNumber(position.feeAmountXUsd + position.feeAmountYUsd)}
+                                    </p>
                                   )}
-                                  
-                                  {/* Borrowings */}
-                                  {position.borrowedPools && position.borrowedPools.length > 0 && (
-                                    <div className="mt-2">
-                                      {position.borrowedPools.map((borrowed, borrowIndex) => (
-                                        <div key={`borrow-${posIndex}-${borrowIndex}`} className="flex justify-between items-center mb-1">
-                                          <div>
-                                            <div className="flex items-center gap-1">
-                                              <span className="text-xs px-1.5 py-0.5 rounded bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200">
-                                                Borrow
-                                              </span>
-                                              <span className="text-sm font-medium text-zinc-900 dark:text-zinc-100">
-                                                {borrowed.symbol}
-                                              </span>
+                                </div>
+                              </div>
+                              {position.claimableRewards > 0 && (
+                                <div className="text-xs text-emerald-600 dark:text-emerald-400 mt-1">
+                                  Rewards: ${formatNumber(position.claimableRewards)}
+                                </div>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      ) : protocol.type === 'finkeeper' && 'investmentCount' in protocol.data ? (
+                        // Finkeeper content
+                        <div className="space-y-2">
+                          {isLoadingFinkeeperDetail[protocol.data.analysisPlatformId] ? (
+                            <div className="flex justify-center py-4">
+                              <span className="text-sm text-zinc-500">Loading positions...</span>
+                            </div>
+                          ) : finkeeperDetailData[protocol.data.analysisPlatformId]?.data?.walletIdPlatformDetailList[0]?.networkHoldVoList[0]?.investTokenBalanceVoList ? (
+                            <div className="space-y-3">
+                              {finkeeperDetailData[protocol.data.analysisPlatformId].data.walletIdPlatformDetailList[0].networkHoldVoList[0].investTokenBalanceVoList.map((investment: FinkeeperInvestment, index: number) => (
+                                <div key={index} className="border border-zinc-200 dark:border-zinc-700 rounded p-2">
+                                  <div className="flex justify-between items-center mb-1">
+                                    <div>
+                                      <div className="flex items-center gap-1">
+                                        <span className={`text-xs px-1.5 py-0.5 rounded ${
+                                          investment.investType === 1 
+                                            ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
+                                            : 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200'
+                                        }`}>
+                                          {investment.investName}
+                                        </span>
+                                        <span className="text-sm font-medium">{investment.investmentName}</span>
+                                      </div>
+                                    </div>
+                                    <div className="text-right">
+                                      <p className="text-sm font-medium text-zinc-900 dark:text-zinc-100">
+                                        ${formatNumber(investment.totalValue)}
+                                      </p>
+                                    </div>
+                                  </div>
+                                  <div className="space-y-1 mt-2">
+                                    {investment.assetsTokenList.map((token: FinkeeperTokenInfo, tokenIndex: number) => (
+                                      <div key={tokenIndex} className="flex justify-between items-center text-xs">
+                                        <div className="flex items-center gap-1">
+                                          <Image 
+                                            src={token.tokenLogo} 
+                                            alt={token.tokenSymbol}
+                                            width={16}
+                                            height={16}
+                                            className="rounded-full"
+                                          />
+                                          <span>{token.tokenSymbol}</span>
+                                        </div>
+                                        <div className="text-right">
+                                          <p>{formatNumber(token.coinAmount)} {token.tokenSymbol}</p>
+                                          <p className="text-zinc-500">${formatNumber(token.currencyAmount)}</p>
+                                        </div>
+                                      </div>
+                                    ))}
+                                  </div>
+                                  {investment.rewardDefiTokenInfo.length > 0 && (
+                                    <div className="mt-2 pt-2 border-t border-zinc-200 dark:border-zinc-700">
+                                      <p className="text-xs text-emerald-600 dark:text-emerald-400 mb-1">Rewards:</p>
+                                      {investment.rewardDefiTokenInfo.map((reward: FinkeeperRewardInfo, rewardIndex: number) => (
+                                        <div key={rewardIndex} className="space-y-1">
+                                          {reward.baseDefiTokenInfos.map((token: FinkeeperTokenInfo, tokenIndex: number) => (
+                                            <div key={tokenIndex} className="flex justify-between items-center text-xs">
+                                              <div className="flex items-center gap-1">
+                                                <Image 
+                                                  src={token.tokenLogo} 
+                                                  alt={token.tokenSymbol}
+                                                  width={16}
+                                                  height={16}
+                                                  className="rounded-full"
+                                                />
+                                                <span>{token.tokenSymbol}</span>
+                                              </div>
+                                              <div className="text-right">
+                                                <p>{formatNumber(token.coinAmount)} {token.tokenSymbol}</p>
+                                                <p className="text-zinc-500">${formatNumber(token.currencyAmount)}</p>
+                                              </div>
                                             </div>
-                                            <p className="text-xs text-zinc-500">{formatNumber(borrowed.borrowedCoin)}</p>
-                                          </div>
-                                          <div className="text-right"><p className="text-sm font-medium text-zinc-900 dark:text-zinc-100">
-                                              ${formatNumber(borrowed.borrowedValueInUsd)}
-                                            </p>
-                                          </div>
+                                          ))}
                                         </div>
                                       ))}
                                     </div>
@@ -888,302 +1100,13 @@ export default function Home() {
                                 </div>
                               ))}
                             </div>
-                          </div>
-                        )}
-                        
-                        {/* Locked SCA */}
-                        {scallopData.veScas && scallopData.veScas.length > 0 && (
-                          <div>
-                            <h4 className="text-xs font-medium mb-2 text-zinc-500">Locked SCA</h4>
-                            <div className="space-y-2">
-                              {scallopData.veScas.map((veSca, index) => (
-                                <div key={index} className="border border-zinc-200 dark:border-zinc-700 rounded p-2">
-                                  <div className="flex justify-between items-center">
-                                    <div>
-                                      <p className="text-sm font-medium text-zinc-900 dark:text-zinc-100">
-                                        {formatNumber(veSca.lockedScaInCoin)} SCA
-                                      </p>
-                                      <p className="text-xs text-zinc-500">
-                                        veSCA: {formatNumber(veSca.currentVeScaBalance)}
-                                      </p>
-                                    </div>
-                                    <div className="text-right">
-                                      <p className="text-sm font-medium text-zinc-900 dark:text-zinc-100">
-                                        ${formatNumber(veSca.lockedScaInUsd)}
-                                      </p>
-                                      <p className="text-xs text-zinc-500">
-                                        Unlocks in {Math.ceil(veSca.remainingLockPeriodInDays)} days
-                                      </p>
-                                    </div>
-                                  </div>
-                                </div>
-                              ))}
+                          ) : (
+                            <div className="text-sm text-zinc-500">
+                              Active positions: {protocol.data.investmentCount}
                             </div>
-                          </div>
-                        )}
-                        
-                        {/* Pending Rewards */}
-                        {scallopData.pendingRewards && 
-                          (scallopData.pendingRewards.lendings?.length > 0 || 
-                           scallopData.pendingRewards.borrowIncentives?.length > 0) && (
-                          <div>
-                            <h4 className="text-xs font-medium mb-2 text-zinc-500">Pending Rewards</h4>
-                            <div className="space-y-2 border border-zinc-200 dark:border-zinc-700 rounded p-2">
-                              {/* Supply rewards */}
-                              {scallopData.pendingRewards.lendings?.map((reward, index) => (
-                                <div key={`supply-reward-${index}`} className="flex justify-between">
-                                  <div className="flex items-center gap-1">
-                                    <span className="text-xs text-zinc-500">Supply</span>
-                                    <span className="text-sm font-medium text-zinc-900 dark:text-zinc-100">
-                                      {formatNumber(reward.pendingRewardInCoin)} {reward.symbol}
-                                    </span>
-                                  </div>
-                                  <p className="text-xs text-zinc-500">
-                                    ${formatNumber(reward.pendingRewardInUsd)}
-                                  </p>
-                                </div>
-                              ))}
-                              
-                              {/* Borrow rewards */}
-                              {scallopData.pendingRewards.borrowIncentives?.map((reward, index) => (
-                                <div key={`borrow-reward-${index}`} className="flex justify-between">
-                                  <div className="flex items-center gap-1">
-                                    <span className="text-xs text-zinc-500">Borrow</span>
-                                    <span className="text-sm font-medium text-zinc-900 dark:text-zinc-100">
-                                      {formatNumber(reward.pendingRewardInCoin)} {reward.symbol}
-                                    </span>
-                                  </div>
-                                  <p className="text-xs text-zinc-500">
-                                    ${formatNumber(reward.pendingRewardInUsd)}
-                                  </p>
-                                </div>
-                              ))}
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    ) : wallet.connected ? (
-                      <div className="text-center py-4 text-sm text-zinc-500">
-                        No Scallop positions found
-                      </div>
-                    ) : (
-                      <div className="text-center py-4 text-sm text-zinc-500">
-                        Connect wallet to view positions
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
-              
-              {/* Momentum section */}
-              <div className="mb-4 border border-zinc-200 dark:border-zinc-700 rounded-lg overflow-hidden">
-                <div className="flex items-center justify-between p-3 bg-zinc-50 dark:bg-zinc-900">
-                  <button 
-                    onClick={() => setShowMomentumPositions(!showMomentumPositions)}
-                    className="flex items-center gap-2 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors rounded px-2 py-1"
-                  >
-                    <Image 
-                      src="https://app.mmt.finance/assets/images/momentum-logo-sq.svg"
-                      alt="Momentum Logo"
-                      width={16}
-                      height={16}
-                      className="rounded-sm"
-                    />
-                    <span className="font-medium text-zinc-900 dark:text-zinc-100">
-                      Momentum {momentumData && momentumData.raw && !momentumData.raw.error && momentumData.raw.length > 0 ? 
-                        `$${formatNumber(momentumData.raw.reduce((sum: number, pos: any) => sum + pos.amount, 0))}` : 
-                        ''
-                      }
-                    </span>
-                    {showMomentumPositions ? (
-                      <ChevronDown className="h-4 w-4 text-zinc-500" />
-                    ) : (
-                      <ChevronRight className="h-4 w-4 text-zinc-500" />
-                    )}
-                  </button>
-                  <div className="flex items-center gap-2">
-                    <Link
-                      href="https://app.mmt.finance/leaderboard?refer=8EQO6A"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="p-1 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded transition-colors"
-                      title="Open Momentum"
-                    >
-                      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-zinc-500">
-                        <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
-                        <polyline points="15 3 21 3 21 9"/>
-                        <line x1="10" y1="14" x2="21" y2="3"/>
-                      </svg>
-                    </Link>
-                  </div>
-                </div>
-                
-                {showMomentumPositions && (
-                  <div className="p-3">
-                    {isLoadingAssets ? (
-                      <div className="flex justify-center py-4">
-                        <span className="text-sm text-zinc-500">Loading positions...</span>
-                      </div>
-                    ) : momentumData && momentumData.raw && !momentumData.raw.error && momentumData.raw.length > 0 ? (
-                      <div className="space-y-3">
-                        {/* Summary removed, now in header */}
-                        
-                        {momentumData.raw.map((position: any, index: number) => (
-                          <div key={index} className="border border-zinc-200 dark:border-zinc-700 rounded p-2">
-                            <div className="flex justify-between items-center mb-1">
-                              <div>
-                                <div className="flex items-center gap-1">
-                                  <span className={`text-xs px-1.5 py-0.5 rounded ${
-                                    position.status === 'In Range' 
-                                      ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
-                                      : 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200'
-                                  }`}>
-                                    {position.status}
-                                  </span>
-                                </div>
-                                <p className="text-xs text-zinc-500">Range: {formatNumber(position.lowerPrice)} - {formatNumber(position.upperPrice)}</p>
-                              </div>
-                              <div className="text-right">
-                                <p className="text-sm font-medium text-zinc-900 dark:text-zinc-100">
-                                  ${formatNumber(position.amount)}
-                                </p>
-                                {(position.feeAmountXUsd + position.feeAmountYUsd) > 0 && (
-                                  <p className="text-xs text-zinc-500">
-                                    Fees: ${formatNumber(position.feeAmountXUsd + position.feeAmountYUsd)}
-                                  </p>
-                                )}
-                              </div>
-                            </div>
-                            {position.claimableRewards > 0 && (
-                              <div className="text-xs text-emerald-600 dark:text-emerald-400 mt-1">
-                                Rewards: ${formatNumber(position.claimableRewards)}
-                              </div>
-                            )}
-                          </div>
-                        ))}
-                      </div>
-                    ) : wallet.connected ? (
-                      <div className="text-center py-4 text-sm text-zinc-500">
-                        No Momentum positions found
-                      </div>
-                    ) : (
-                      <div className="text-center py-4 text-sm text-zinc-500">
-                        Connect wallet to view positions
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
-              
-              {/* Bluefin section */}
-              {false && (
-                <div className="mb-4 border border-zinc-200 dark:border-zinc-700 rounded-lg overflow-hidden">
-                  <div className="flex items-center justify-between p-3 bg-zinc-50 dark:bg-zinc-900">
-                    <button 
-                      onClick={() => setShowBluefinPositions(!showBluefinPositions)}
-                      className="flex items-center gap-2 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors rounded px-2 py-1"
-                    >
-                      <Image 
-                        src="https://bluefin.io/images/square.png"
-                        alt="Bluefin Logo"
-                        width={16}
-                        height={16}
-                        className="rounded-sm"
-                      />
-                      <span className="font-medium text-zinc-900 dark:text-zinc-100">Bluefin</span>
-                      {showBluefinPositions ? (
-                        <ChevronDown className="h-4 w-4 text-zinc-500" />
-                      ) : (
-                        <ChevronRight className="h-4 w-4 text-zinc-500" />
-                      )}
-                    </button>
-                    <div className="flex items-center gap-2">
-                      <Link
-                        href="https://trade.bluefin.io/liquidity-pools"
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="p-1 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded transition-colors"
-                        title="Open Bluefin"
-                      >
-                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-zinc-500">
-                          <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
-                          <polyline points="15 3 21 3 21 9"/>
-                          <line x1="10" y1="14" x2="21" y2="3"/>
-                        </svg>
-                      </Link>
-                    </div>
-                  </div>
-                  
-                  {showBluefinPositions && (
-                    <div className="p-3">
-                      <div className="text-center py-4 text-sm text-zinc-500">
-                        Coming soon - Bluefin integration
-                      </div>
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {/* Finkeeper section */}
-              {finkeeperData?.data.walletIdPlatformList[0]?.platformList
-                .filter(platform => !['Scallop', 'Momentum'].includes(platform.platformName))
-                .sort((a, b) => parseFloat(b.currencyAmount) - parseFloat(a.currencyAmount))
-                .map((platform, index) => (
-                <div key={index} className="mb-4 border border-zinc-200 dark:border-zinc-700 rounded-lg overflow-hidden">
-                  <div className="flex items-center justify-between p-3 bg-zinc-50 dark:bg-zinc-900">
-                    <button 
-                      onClick={() => setShowFinkeeperPositions(prev => ({
-                        ...prev,
-                        [platform.analysisPlatformId]: !prev[platform.analysisPlatformId]
-                      }))}
-                      className="flex items-center gap-2 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors rounded px-2 py-1"
-                    >
-                      <Image 
-                        src={platform.platformLogo}
-                        alt={`${platform.platformName} Logo`}
-                        width={16}
-                        height={16}
-                        className="rounded-sm"
-                      />
-                      <span className="font-medium text-zinc-900 dark:text-zinc-100">
-                        {platform.platformName} ${formatNumber(parseFloat(platform.currencyAmount))}
-                      </span>
-                      {showFinkeeperPositions[platform.analysisPlatformId] ? (
-                        <ChevronDown className="h-4 w-4 text-zinc-500" />
-                      ) : (
-                        <ChevronRight className="h-4 w-4 text-zinc-500" />
-                      )}
-                    </button>
-                    <div className="flex items-center gap-2">
-                      <Link
-                        href={platform.platformUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="p-1 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded transition-colors"
-                        title={`Open ${platform.platformName}`}
-                      >
-                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-zinc-500">
-                          <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
-                          <polyline points="15 3 21 3 21 9"/>
-                          <line x1="10" y1="14" x2="21" y2="3"/>
-                        </svg>
-                      </Link>
-                    </div>
-                  </div>
-                  
-                  {showFinkeeperPositions[platform.analysisPlatformId] && (
-                    <div className="p-3">
-                      {isLoadingAssets ? (
-                        <div className="flex justify-center py-4">
-                          <span className="text-sm text-zinc-500">Loading positions...</span>
+                          )}
                         </div>
-                      ) : (
-                        <div className="space-y-2">
-                          <div className="text-sm text-zinc-500">
-                            Active positions: {platform.investmentCount}
-                          </div>
-                        </div>
-                      )}
+                      ) : null}
                     </div>
                   )}
                 </div>
