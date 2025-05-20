@@ -68,6 +68,11 @@ export async function POST(req: Request) {
       2. Provide basic token information
       3. Keep the analysis focused on the user's holdings
 
+      When user asks to "Show USD pools":
+      1. Use viewPools tool with token parameter "usd"
+      2. This will show all pools that contain USD or stablecoins
+      3. Focus on showing stable pairs and lending pools
+
       Important: Always respond in the same language as the user's message. If the user writes in Russian, respond in Russian. If the user writes in English, respond in English.
 
       Current wallet context: ${JSON.stringify(wallet || null)}`

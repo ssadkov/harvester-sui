@@ -248,7 +248,7 @@ export default function Home() {
   const [isLoadingMomentum, setIsLoadingMomentum] = useState(false);
   const [showRawData, setShowRawData] = useState(false);
   
-  const { messages, input, handleInputChange, handleSubmit } = useChat({
+  const { messages, input, handleInputChange, handleSubmit, append } = useChat({
     api: '/api/chat',
     maxSteps: 5,
     body: {
@@ -539,7 +539,8 @@ export default function Home() {
   const suggestedActions = [
     { title: "Check", label: "Scallop Balance", action: "check-scallop-balance" },
     { title: "Check", label: "Momentum Balance", action: "check-momentum-balance" },
-    { title: "Show me", label: "Pie chart of my assets", action: "show-assets-pie-chart" }
+    { title: "Show me", label: "Pie chart of my assets", action: "show-assets-pie-chart" },
+    { title: "Show", label: "USD pools", action: "show-usd-pools" }
   ];
 
   // Функция для отправки баланса Scallop в чат
@@ -674,6 +675,27 @@ export default function Home() {
     console.log('Submitting message:', input);
     setShowActionButtons(false);
     handleSubmit(e);
+  };
+
+  // Добавляем обработчик для кнопки Show USD pools
+  const handleShowUSDPools = async () => {
+    if (!wallet.connected) {
+      alert("Please connect your wallet first");
+      return;
+    }
+
+    try {
+      // Создаем событие submit
+      const event = new Event('submit') as any;
+      event.preventDefault = () => {};
+      
+      // Устанавливаем значение input и сразу отправляем
+      handleInputChange({ target: { value: 'Show USD pools' } } as any);
+      handleSubmit(event);
+    } catch (error) {
+      console.error('Error fetching pools:', error);
+      alert('Failed to fetch pools data');
+    }
   };
 
   return (
@@ -1363,7 +1385,15 @@ export default function Home() {
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.05 * index }}
-                    onClick={() => {}}
+                    onClick={() => {
+                      setShowActionButtons(false);
+                      if (action.action === 'show-usd-pools') {
+                        append({
+                          role: 'user',
+                          content: 'Show USD pools'
+                        });
+                      }
+                    }}
                     className="text-left border border-zinc-200 dark:border-zinc-700 text-zinc-800 dark:text-zinc-300 rounded-lg p-4 text-sm hover:bg-zinc-100 dark:hover:bg-zinc-700 transition-colors flex flex-col"
                   >
                     <span className="font-medium">{action.title}</span>
