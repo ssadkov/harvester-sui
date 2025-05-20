@@ -1022,6 +1022,7 @@ export default function Home() {
                                   </div>
                                   <p className="text-xs text-zinc-500">Range: {formatNumber(position.lowerPrice)} - {formatNumber(position.upperPrice)}</p>
                                 </div>
+                                
                                 <div className="text-right">
                                   <p className="text-sm font-medium text-zinc-900 dark:text-zinc-100">
                                     ${formatNumber(position.amount)}
@@ -1036,6 +1037,42 @@ export default function Home() {
                               {position.claimableRewards > 0 && (
                                 <div className="text-xs text-emerald-600 dark:text-emerald-400 mt-1">
                                   Rewards: ${formatNumber(position.claimableRewards)}
+                                </div>
+                              )}
+                              {(position.claimableRewards > 0 || (position.feeAmountXUsd + position.feeAmountYUsd) > 0) && (
+                                <div className="mt-2 flex justify-end">
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    className="text-xs"
+                                    onClick={async () => {
+                                      const rewards = position.claimableRewards > 0 ? `$${formatNumber(position.claimableRewards)} rewards` : '';
+                                      const fees = (position.feeAmountXUsd + position.feeAmountYUsd) > 0 ? `$${formatNumber(position.feeAmountXUsd + position.feeAmountYUsd)} fees` : '';
+                                      const message = [rewards, fees].filter(Boolean).join(' and ');
+                                      
+                                      if (confirm(`Collecting ${message} for position ${index + 1}`)) {
+                                        try {
+                                          if (!wallet.connected || !wallet.account?.address) {
+                                            alert("Please connect your wallet first");
+                                            return;
+                                          }
+                                          
+                                          const message = `Collect rewards and fees for Momentum position ${index + 1}`;
+                                          const result = await wallet.signPersonalMessage({
+                                            message: new TextEncoder().encode(message)
+                                          });
+                                          
+                                          console.log('Signature result:', result);
+                                          alert('Transaction signed successfully!');
+                                        } catch (error) {
+                                          console.error('Error signing message:', error);
+                                          alert('Failed to sign message');
+                                        }
+                                      }
+                                    }}
+                                  >
+                                    Collect {position.claimableRewards > 0 ? 'rewards' : ''} {position.claimableRewards > 0 && (position.feeAmountXUsd + position.feeAmountYUsd) > 0 ? 'and ' : ''} {(position.feeAmountXUsd + position.feeAmountYUsd) > 0 ? 'fees' : ''}
+                                  </Button>
                                 </div>
                               )}
                             </div>
