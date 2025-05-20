@@ -26,6 +26,8 @@ import { ProtocolPieChart } from '@/components/ProtocolPieChart';
 import { PoolsView } from '../components/chat/PoolsView';
 import { WalletView } from '../components/chat/WalletView';
 import { TokenView } from '../components/chat/TokenView';
+import { createClaimAllTx } from '@/app/utils/momentum-utils';
+import { initMomentumSDK } from '@/app/utils/momentum-utils';
 
 // Define Momentum position interface
 interface MomentumPosition {
@@ -1056,17 +1058,41 @@ export default function Home() {
                                             alert("Please connect your wallet first");
                                             return;
                                           }
+
+                                          console.log('Starting transaction with position:', position);
+
+                                          // Инициализируем SDK
+                                          const sdk = initMomentumSDK();
+                                          console.log('SDK initialized');
                                           
-                                          const message = `Collect rewards and fees for Momentum position ${index + 1}`;
-                                          const result = await wallet.signPersonalMessage({
-                                            message: new TextEncoder().encode(message)
+                                          // Создаем транзакцию
+                                          const tx = await createClaimAllTx(
+                                            sdk,
+                                            position.poolId,
+                                            position.objectId,
+                                            position.rewarders.map((r: any) => r.id)
+                                          );
+                                          console.log('Transaction created:', tx);
+
+                                          // Подписываем и отправляем транзакцию
+                                          console.log('Signing and executing transaction...');
+                                          const result = await wallet.signAndExecuteTransaction({
+                                            transaction: tx
                                           });
                                           
-                                          console.log('Signature result:', result);
-                                          alert('Transaction signed successfully!');
+                                          console.log('Transaction result:', result);
+                                          alert('Transaction signed and executed successfully!');
+                                          
+                                          // Обновляем данные после успешной транзакции
+                                          console.log('Refreshing user assets...');
+                                          fetchUserAssets();
                                         } catch (error) {
-                                          console.error('Error signing message:', error);
-                                          alert('Failed to sign message');
+                                          console.error('Error executing transaction:', error);
+                                          if (error instanceof Error) {
+                                            alert(`Failed to execute transaction: ${error.message}`);
+                                          } else {
+                                            alert('Failed to execute transaction');
+                                          }
                                         }
                                       }
                                     }}
