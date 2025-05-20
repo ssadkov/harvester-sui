@@ -929,19 +929,6 @@ const Home = () => {
               
               {/* Tokens section */}
               <div className="mb-4 border border-zinc-200 dark:border-zinc-700 rounded-lg overflow-hidden">
-                {/* Добавляем кнопку Navi Collect */}
-                {naviData.rewards.length > 0 && (
-                  <div className="flex justify-end p-3 bg-zinc-50 dark:bg-zinc-900 border-b border-zinc-200 dark:border-zinc-700">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="text-xs"
-                      onClick={handleNaviCollect}
-                    >
-                      Collect Navi rewards
-                    </Button>
-                  </div>
-                )}
                 <div className="flex flex-row items-center justify-between p-3 bg-zinc-50 dark:bg-zinc-900">
                   <div className="flex-1">
                     <button
@@ -1252,19 +1239,6 @@ const Home = () => {
                             if (detail) {
                               return (
                                 <div className="space-y-3">
-                                  {/* Добавляем кнопку Navi Collect в блок Navi Protocol */}
-                                  {('platformName' in protocol.data && protocol.data.platformName.toLowerCase() === 'navi' && naviData.rewards.length > 0) && (
-                                    <div className="flex justify-end mb-2">
-                                      <Button
-                                        variant="outline"
-                                        size="sm"
-                                        className="text-xs"
-                                        onClick={handleNaviCollect}
-                                      >
-                                        Collect Navi rewards
-                                      </Button>
-                                    </div>
-                                  )}
                                   {detail
                                     .filter(investment => !hideSmallAssets || parseFloat(investment.totalValue) >= 1)
                                     .map((investment: FinkeeperInvestment, index: number) => (
@@ -1353,6 +1327,18 @@ const Home = () => {
                                                       ))}
                                                     </div>
                                                   ))}
+                                                  {platformId === 115572 && naviData.rewards.length > 0 && (
+                                                    <div className="mt-2 flex justify-end">
+                                                      <Button
+                                                        variant="outline"
+                                                        size="sm"
+                                                        className="text-xs"
+                                                        onClick={handleNaviCollect}
+                                                      >
+                                                        Collect Navi rewards
+                                                      </Button>
+                                                    </div>
+                                                  )}
                                                 </>
                                               );
                                             })()}
