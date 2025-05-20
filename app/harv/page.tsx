@@ -1052,47 +1052,43 @@ export default function Home() {
                                       const fees = (position.feeAmountXUsd + position.feeAmountYUsd) > 0 ? `$${formatNumber(position.feeAmountXUsd + position.feeAmountYUsd)} fees` : '';
                                       const message = [rewards, fees].filter(Boolean).join(' and ');
                                       
-                                      if (confirm(`Collecting ${message} for position ${index + 1}`)) {
-                                        try {
-                                          if (!wallet.connected || !wallet.account?.address) {
-                                            alert("Please connect your wallet first");
-                                            return;
-                                          }
+                                      try {
+                                        if (!wallet.connected || !wallet.account?.address) {
+                                          alert("Please connect your wallet first");
+                                          return;
+                                        }
 
-                                          console.log('Starting transaction with position:', position);
+                                        console.log('Starting transaction with position:', position);
 
-                                          // Инициализируем SDK
-                                          const sdk = initMomentumSDK();
-                                          console.log('SDK initialized');
-                                          
-                                          // Создаем транзакцию
-                                          const tx = await createClaimAllTx(
-                                            sdk,
-                                            position.poolId,
-                                            position.objectId,
-                                            position.rewarders.map((r: any) => r.id)
-                                          );
-                                          console.log('Transaction created:', tx);
+                                        // Инициализируем SDK
+                                        const sdk = initMomentumSDK();
+                                        console.log('SDK initialized');
+                                        
+                                        // Создаем транзакцию
+                                        const tx = await createClaimAllTx(
+                                          sdk,
+                                          wallet.account.address
+                                        );
+                                        console.log('Transaction created:', tx);
 
-                                          // Подписываем и отправляем транзакцию
-                                          console.log('Signing and executing transaction...');
-                                          const result = await wallet.signAndExecuteTransaction({
-                                            transaction: tx
-                                          });
-                                          
-                                          console.log('Transaction result:', result);
-                                          alert('Transaction signed and executed successfully!');
-                                          
-                                          // Обновляем данные после успешной транзакции
-                                          console.log('Refreshing user assets...');
-                                          fetchUserAssets();
-                                        } catch (error) {
-                                          console.error('Error executing transaction:', error);
-                                          if (error instanceof Error) {
-                                            alert(`Failed to execute transaction: ${error.message}`);
-                                          } else {
-                                            alert('Failed to execute transaction');
-                                          }
+                                        // Подписываем и отправляем транзакцию
+                                        console.log('Signing and executing transaction...');
+                                        const result = await wallet.signAndExecuteTransaction({
+                                          transaction: tx
+                                        });
+                                        
+                                        console.log('Transaction result:', result);
+                                        alert('Transaction signed and executed successfully!');
+                                        
+                                        // Обновляем данные после успешной транзакции
+                                        console.log('Refreshing user assets...');
+                                        fetchUserAssets();
+                                      } catch (error) {
+                                        console.error('Error executing transaction:', error);
+                                        if (error instanceof Error) {
+                                          alert(`Failed to execute transaction for pool ${position.poolId}: ${error.message}`);
+                                        } else {
+                                          alert(`Failed to execute transaction for pool ${position.poolId}`);
                                         }
                                       }
                                     }}
