@@ -1163,64 +1163,61 @@ const Home = () => {
                                   Rewards: ${formatNumber(position.claimableRewards)}
                                 </div>
                               )}
-                              {(position.claimableRewards > 0 || (position.feeAmountXUsd + position.feeAmountYUsd) > 0) && (
-                                <div className="mt-2 flex justify-end">
-                                  <Button
-                                    variant="outline"
-                                    size="sm"
-                                    className="text-xs"
-                                    onClick={async () => {
-                                      const rewards = position.claimableRewards > 0 ? `$${formatNumber(position.claimableRewards)} rewards` : '';
-                                      const fees = (position.feeAmountXUsd + position.feeAmountYUsd) > 0 ? `$${formatNumber(position.feeAmountXUsd + position.feeAmountYUsd)} fees` : '';
-                                      const message = [rewards, fees].filter(Boolean).join(' and ');
-                                      
-                                      try {
-                                        if (!wallet.connected || !wallet.account?.address) {
-                                          alert("Please connect your wallet first");
-                                          return;
-                                        }
-
-                                        console.log('Starting transaction with position:', position);
-
-                                        // Инициализируем SDK
-                                        const sdk = initMomentumSDK();
-                                        console.log('SDK initialized');
-                                        
-                                        // Создаем транзакцию
-                                        const tx = await createClaimAllTx(
-                                          sdk,
-                                          wallet.account.address
-                                        );
-                                        console.log('Transaction created:', tx);
-
-                                        // Подписываем и отправляем транзакцию
-                                        console.log('Signing and executing transaction...');
-                                        const result = await wallet.signAndExecuteTransaction({
-                                          transaction: tx
-                                        });
-                                        
-                                        console.log('Transaction result:', result);
-                                        alert('Transaction signed and executed successfully!');
-                                        
-                                        // Обновляем данные после успешной транзакции
-                                        console.log('Refreshing user assets...');
-                                        fetchUserAssets();
-                                      } catch (error) {
-                                        console.error('Error executing transaction:', error);
-                                        if (error instanceof Error) {
-                                          alert(`Failed to execute transaction for pool ${position.poolId}: ${error.message}`);
-                                        } else {
-                                          alert(`Failed to execute transaction for pool ${position.poolId}`);
-                                        }
-                                      }
-                                    }}
-                                  >
-                                    Collect {position.claimableRewards > 0 ? 'rewards' : ''} {position.claimableRewards > 0 && (position.feeAmountXUsd + position.feeAmountYUsd) > 0 ? 'and ' : ''} {(position.feeAmountXUsd + position.feeAmountYUsd) > 0 ? 'fees' : ''}
-                                  </Button>
-                                </div>
-                              )}
                             </div>
                           ))}
+                          {/* Перемещаем кнопку сбора наград Momentum сюда */}
+                          {protocol.data.raw.some((position: any) => position.claimableRewards > 0 || (position.feeAmountXUsd + position.feeAmountYUsd) > 0) && (
+                            <div className="mt-2 flex justify-end">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="text-xs"
+                                onClick={async () => {
+                                  try {
+                                    if (!wallet.connected || !wallet.account?.address) {
+                                      alert("Please connect your wallet first");
+                                      return;
+                                    }
+
+                                    console.log('Starting transaction...');
+
+                                    // Инициализируем SDK
+                                    const sdk = initMomentumSDK();
+                                    console.log('SDK initialized');
+                                    
+                                    // Создаем транзакцию
+                                    const tx = await createClaimAllTx(
+                                      sdk,
+                                      wallet.account.address
+                                    );
+                                    console.log('Transaction created:', tx);
+
+                                    // Подписываем и отправляем транзакцию
+                                    console.log('Signing and executing transaction...');
+                                    const result = await wallet.signAndExecuteTransaction({
+                                      transaction: tx
+                                    });
+                                    
+                                    console.log('Transaction result:', result);
+                                    alert('Transaction signed and executed successfully!');
+                                    
+                                    // Обновляем данные после успешной транзакции
+                                    console.log('Refreshing user assets...');
+                                    fetchUserAssets();
+                                  } catch (error) {
+                                    console.error('Error executing transaction:', error);
+                                    if (error instanceof Error) {
+                                      alert(`Failed to execute transaction: ${error.message}`);
+                                    } else {
+                                      alert('Failed to execute transaction: Unknown error');
+                                    }
+                                  }
+                                }}
+                              >
+                                Collect all rewards and fees
+                              </Button>
+                            </div>
+                          )}
                         </div>
                       ) : protocol.type === 'finkeeper' && 'investmentCount' in protocol.data ? (
                         // Finkeeper content
@@ -1327,7 +1324,14 @@ const Home = () => {
                                                       ))}
                                                     </div>
                                                   ))}
-                                                  {platformId === 115572 && naviData.rewards.length > 0 && (
+                                                  
+                                                </>
+                                              );
+                                            })()}
+                                          </div>
+                                        )}
+                                      </div>
+                                    ))}{platformId === 115572 && naviData.rewards.length > 0 && (
                                                     <div className="mt-2 flex justify-end">
                                                       <Button
                                                         variant="outline"
@@ -1339,13 +1343,6 @@ const Home = () => {
                                                       </Button>
                                                     </div>
                                                   )}
-                                                </>
-                                              );
-                                            })()}
-                                          </div>
-                                        )}
-                                      </div>
-                                    ))}
                                   {hideSmallAssets && (() => {
                                     const hiddenInvestments = detail.filter(investment => parseFloat(investment.totalValue) < 1).length;
                                     const hiddenTokens = detail.flatMap(investment => investment.assetsTokenList).filter(token => parseFloat(token.currencyAmount) < 1).length;
