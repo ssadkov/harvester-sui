@@ -1489,7 +1489,7 @@ const Home = () => {
               initial={{ opacity: 0, scale: 0.9 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.9 }}
-              className="w-full md:max-w-[750px] mx-auto mb-4 z-50"
+              className="w-full md:max-w-[750px] mx-auto mb-4 z-20"
             >
               <div className="bg-white dark:bg-zinc-800 rounded-xl shadow-lg p-6 grid grid-cols-2 gap-4">
                 {suggestedActions.map((action, index) => (
