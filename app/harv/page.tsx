@@ -29,6 +29,26 @@ import { TokenView } from '../components/chat/TokenView';
 import { createClaimAllTx, initMomentumSDK } from '@/app/utils/momentum-utils';
 import { createClaimAllRewardsTx, initNaviSDK, getAvailableRewards } from '@/app/utils/navi-utils';
 import { viewPoolsTool } from '@/app/tools/pool-tools';
+import { processPoolsData } from '@/utils/poolUtils';
+
+// Добавляем константы для иконок и ссылок протоколов
+const protocolIcons: Record<string, string> = {
+  'cetus': '/protocols/cetus.png',
+  'deepbook': '/protocols/deepbook.png',
+  'scallop': '/protocols/scallop.png',
+  'momentum': '/protocols/momentum.png',
+  'bluefin': '/protocols/bluefin.png',
+  'navi': '/protocols/navi.png'
+};
+
+const protocolLinks: Record<string, string> = {
+  'cetus': 'https://app.cetus.zone',
+  'deepbook': 'https://deepbook.sui.io',
+  'scallop': 'https://app.scallop.io',
+  'momentum': 'https://app.mmt.finance',
+  'bluefin': 'https://app.bluefin.io',
+  'navi': 'https://app.navi.finance'
+};
 
 // Define Momentum position interface
 interface MomentumPosition {
@@ -234,9 +254,120 @@ type FinkeeperData = {
   investmentCount: number;
 } & FinkeeperPlatform;
 
+// Добавляем кэш для результатов запросов
+const poolsCache = new Map<string, any[]>();
+
+const TokenPools = ({ symbol }: { symbol: string }) => {
+  const [pools, setPools] = useState<any[]>([]);
+  const [isLoadingPools, setIsLoadingPools] = useState(false);
+
+  useEffect(() => {
+    const abortController = new AbortController();
+
+    const fetchPools = async () => {
+      console.log('Fetching pools for symbol:', symbol);
+      
+      // Проверяем кэш
+      if (poolsCache.has(symbol)) {
+        console.log('Using cached pools for:', symbol);
+        setPools(poolsCache.get(symbol)!);
+        return;
+      }
+
+      setIsLoadingPools(true);
+      try {
+        const baseUrl = typeof window === 'undefined' ? process.env.NEXT_PUBLIC_BASE_URL : '';
+        const url = `${baseUrl}/api/pools?search=${symbol.toLowerCase()}`;
+        console.log('Fetching from URL:', url);
+        
+        const response = await fetch(url, {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          signal: abortController.signal
+        });
+        
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
+        const data = await response.json();
+        console.log('Received data:', data);
+        
+        if (data && Object.keys(data).length > 0) {
+          const processedPools = processPoolsData(data);
+          console.log('Processed pools:', processedPools);
+          // Сохраняем в кэш
+          poolsCache.set(symbol, processedPools);
+          setPools(processedPools);
+        } else {
+          console.log('No pools data received');
+          poolsCache.set(symbol, []);
+          setPools([]);
+        }
+      } catch (error: any) {
+        if (error.name === 'AbortError') {
+          console.log('Request was aborted');
+        } else {
+          console.error('Error fetching pools:', error);
+          poolsCache.set(symbol, []);
+          setPools([]);
+        }
+      } finally {
+        if (!abortController.signal.aborted) {
+          setIsLoadingPools(false);
+        }
+      }
+    };
+
+    fetchPools();
+
+    return () => {
+      abortController.abort();
+    };
+  }, [symbol]);
+
+  console.log('Current state:', { isLoadingPools, poolsCount: pools.length });
+
+  if (isLoadingPools) {
+    return (
+      <div className="mt-4">
+        <h3 className="text-lg font-semibold mb-4">Earn ideas</h3>
+        <div className="flex justify-center py-4">
+          <span className="text-sm text-zinc-500">Loading pools...</span>
+        </div>
+      </div>
+    );
+  }
+
+  if (pools.length === 0) {
+    return (
+      <div className="mt-4">
+        <h3 className="text-lg font-semibold mb-4">Earn ideas</h3>
+        <div className="text-sm text-zinc-500">No pools found for {symbol}</div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="mt-4">
+      <h3 className="text-lg font-semibold mb-4">Earn ideas</h3>
+      <PoolsView message={`Found ${pools.length} pools`} pools={pools} />
+    </div>
+  );
+};
+
 const Home = () => {
   const wallet = useWallet();
   const [showActionButtons, setShowActionButtons] = useState(false);
+  const [selectedAsset, setSelectedAsset] = useState<{
+    type: 'token' | 'protocol';
+    data: any;
+    name: string;
+    value: number;
+    logo?: string;
+  } | null>(null);
   const [balanceData, setBalanceData] = useState<{
     formatted: string;
     raw: any;
@@ -811,7 +942,7 @@ const Home = () => {
             className={
               isMobileView
                 ? "fixed top-0 left-0 w-full h-full z-50 bg-white dark:bg-zinc-800 border-r border-zinc-200 dark:border-zinc-700 overflow-y-auto"
-                : "border-r border-zinc-200 dark:border-zinc-700 h-full max-h-screen overflow-y-auto bg-white dark:bg-zinc-800 z-10"
+                : "border-r border-zinc-200 dark:border-zinc-700 h-full max-h-screen overflow-y-auto bg-white dark:bg-zinc-800 z-10 w-1/3"
             }
           >
             <div className="p-4">
@@ -1005,51 +1136,54 @@ const Home = () => {
                       </div>
                     ) : (userTokens || []).length > 0 ? (
                       <div className="space-y-2">
-                        <div className="space-y-2">
-                          {(userTokens || [])
-                            .filter(token => !hideSmallAssets || parseFloat(token.usdPrice || '0') >= 1)
-                            .map((token) => (
-                              <div key={token.id} className="flex items-center justify-between p-2 rounded-lg bg-zinc-50 dark:bg-zinc-800/50">
-                                <div className="flex items-center gap-2">
-                                  {token.iconUrl ? (
-                                    <div className="w-6 h-6 relative rounded-full overflow-hidden bg-zinc-100 dark:bg-zinc-800">
-                                      <Image
-                                        src={token.iconUrl}
-                                        alt={token.symbol}
-                                        fill
-                                        className="object-contain"
-                                      />
-                                    </div>
-                                  ) : (
-                                    <div className="w-6 h-6 rounded-full bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center">
-                                      <span className="text-xs font-medium text-zinc-500">
-                                        {(token.symbol && token.symbol.length > 0) ? token.symbol[0] : '?'}
-                                      </span>
-                                    </div>
-                                  )}
-                                  <div>
-                                    <p className="text-sm font-medium">{token.symbol}</p>
-                                    <p className="text-xs text-zinc-500">{token.name}</p>
+                        {(userTokens || [])
+                          .filter(token => !hideSmallAssets || parseFloat(token.usdPrice || '0') >= 1)
+                          .map((token) => (
+                            <div 
+                              key={token.id} 
+                              className="flex items-center justify-between p-2 rounded-lg bg-zinc-50 dark:bg-zinc-800/50 cursor-pointer hover:bg-zinc-100 dark:hover:bg-zinc-700/50"
+                              onClick={() => setSelectedAsset({
+                                type: 'token',
+                                data: token,
+                                name: token.symbol,
+                                value: parseFloat(token.usdPrice || '0'),
+                                logo: token.iconUrl || undefined
+                              })}
+                            >
+                              <div className="flex items-center gap-2">
+                                {token.iconUrl ? (
+                                  <div className="w-6 h-6 relative rounded-full overflow-hidden bg-zinc-100 dark:bg-zinc-800">
+                                    <Image
+                                      src={token.iconUrl}
+                                      alt={token.symbol}
+                                      fill
+                                      className="object-contain"
+                                    />
                                   </div>
-                                </div>
-                                <div className="text-right">
-                                  <p className="text-sm font-medium">
-                                    {formatTokenBalance(token.balance, token.decimals)} {token.symbol}
-                                  </p>
-                                  {token.usdPrice && (
-                                    <p className="text-xs text-zinc-500">
-                                      {formatUSDValue(token.usdPrice)}
-                                    </p>
-                                  )}
+                                ) : (
+                                  <div className="w-6 h-6 rounded-full bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center">
+                                    <span className="text-xs font-medium text-zinc-500">
+                                      {(token.symbol && token.symbol.length > 0) ? token.symbol[0] : '?'}
+                                    </span>
+                                  </div>
+                                )}
+                                <div>
+                                  <p className="text-sm font-medium">{token.symbol}</p>
+                                  <p className="text-xs text-zinc-500">{token.name}</p>
                                 </div>
                               </div>
-                            ))}
-                        </div>
-                        {hideSmallAssets && (userTokens || []).filter(token => parseFloat(token.usdPrice || '0') < 1).length > 0 && (
-                          <div className="text-xs text-zinc-500 mt-2">
-                            {userTokens.filter(token => parseFloat(token.usdPrice || '0') < 1).length} assets hidden
-                          </div>
-                        )}
+                              <div className="text-right">
+                                <p className="text-sm font-medium">
+                                  {formatTokenBalance(token.balance, token.decimals)} {token.symbol}
+                                </p>
+                                {token.usdPrice && (
+                                  <p className="text-xs text-zinc-500">
+                                    {formatUSDValue(token.usdPrice)}
+                                  </p>
+                                )}
+                              </div>
+                            </div>
+                          ))}
                       </div>
                     ) : wallet.connected ? (
                       <div className="text-center py-4 text-sm text-zinc-500">
@@ -1200,7 +1334,7 @@ const Home = () => {
                               )}
                             </div>
                           ))}
-                          {/* Перемещаем кнопку сбора наград Momentum сюда */}
+                          {/* Кнопка сбора наград Momentum */}
                           {protocol.data.raw.some((position: any) => position.claimableRewards > 0 || (position.feeAmountXUsd + position.feeAmountYUsd) > 0) && (
                             <div className="mt-2 flex justify-end">
                               <Button
@@ -1340,44 +1474,44 @@ const Home = () => {
                                                       {reward.baseDefiTokenInfos
                                                         .filter(token => !hideSmallAssets || parseFloat(token.currencyAmount) >= 1)
                                                         .map((token: FinkeeperTokenInfo, tokenIndex: number) => (
-                                                        <div key={tokenIndex} className="flex justify-between items-center text-xs">
-                                                          <div className="flex items-center gap-1">
-                                                            <Image 
-                                                              src={token.tokenLogo} 
-                                                              alt={token.tokenSymbol}
-                                                              width={16}
-                                                              height={16}
-                                                              className="rounded-full"
-                                                            />
-                                                            <span>{token.tokenSymbol}</span>
+                                                          <div key={tokenIndex} className="flex justify-between items-center text-xs">
+                                                            <div className="flex items-center gap-1">
+                                                              <Image 
+                                                                src={token.tokenLogo} 
+                                                                alt={token.tokenSymbol}
+                                                                width={16}
+                                                                height={16}
+                                                                className="rounded-full"
+                                                              />
+                                                              <span>{token.tokenSymbol}</span>
+                                                            </div>
+                                                            <div className="text-right">
+                                                              <p>{formatNumber(token.coinAmount)} {token.tokenSymbol}</p>
+                                                              <p className="text-zinc-500">${formatNumber(token.currencyAmount)}</p>
+                                                            </div>
                                                           </div>
-                                                          <div className="text-right">
-                                                            <p>{formatNumber(token.coinAmount)} {token.tokenSymbol}</p>
-                                                            <p className="text-zinc-500">${formatNumber(token.currencyAmount)}</p>
-                                                          </div>
-                                                        </div>
-                                                      ))}
+                                                        ))}
                                                     </div>
                                                   ))}
-                                                  
                                                 </>
                                               );
                                             })()}
                                           </div>
                                         )}
                                       </div>
-                                    ))}{platformId === 115572 && naviData.rewards.length > 0 && (
-                                                    <div className="mt-2 flex justify-end">
-                                                      <Button
-                                                        variant="outline"
-                                                        size="sm"
-                                                        className="text-xs"
-                                                        onClick={handleNaviCollect}
-                                                      >
-                                                        Collect Navi rewards
-                                                      </Button>
-                                                    </div>
-                                                  )}
+                                    ))}
+                                  {platformId === 115572 && naviData.rewards.length > 0 && (
+                                    <div className="mt-2 flex justify-end">
+                                      <Button
+                                        variant="outline"
+                                        size="sm"
+                                        className="text-xs"
+                                        onClick={handleNaviCollect}
+                                      >
+                                        Collect Navi rewards
+                                      </Button>
+                                    </div>
+                                  )}
                                   {hideSmallAssets && (() => {
                                     const hiddenInvestments = detail.filter(investment => parseFloat(investment.totalValue) < 1).length;
                                     const hiddenTokens = detail.flatMap(investment => investment.assetsTokenList).filter(token => parseFloat(token.currencyAmount) < 1).length;
@@ -1421,8 +1555,88 @@ const Home = () => {
         </button>
       )}
       
+      {/* Центральная панель с диаграммами или деталями актива */}
+      <div className="w-1/3 h-full border-r border-zinc-200 dark:border-zinc-700 overflow-y-auto bg-white dark:bg-zinc-800">
+        <div className="p-4">
+          {selectedAsset ? (
+            <div className="space-y-4">
+              <div className="flex items-center gap-3 mb-4">
+                {selectedAsset.logo && (
+                  <Image
+                    src={selectedAsset.logo}
+                    alt={`${selectedAsset.name} Logo`}
+                    width={32}
+                    height={32}
+                    className="rounded-sm"
+                  />
+                )}
+                <div>
+                  <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">{selectedAsset.name}</h2>
+                  <p className="text-sm text-zinc-500">${formatNumber(selectedAsset.value)}</p>
+                </div>
+              </div>
+              
+              {selectedAsset.type === 'token' && (
+                <div className="space-y-2">
+                  <div className="flex justify-between items-center p-3 bg-zinc-50 dark:bg-zinc-900 rounded-lg">
+                    <span className="text-sm font-medium">Balance</span>
+                    <span className="text-sm">{formatTokenBalance(selectedAsset.data.balance, selectedAsset.data.decimals)} {selectedAsset.data.symbol}</span>
+                  </div>
+                  {selectedAsset.data.usdPrice && (
+                    <div className="flex justify-between items-center p-3 bg-zinc-50 dark:bg-zinc-900 rounded-lg">
+                      <span className="text-sm font-medium">Price</span>
+                      <span className="text-sm">${formatNumber(parseFloat(selectedAsset.data.usdPrice))}</span>
+                    </div>
+                  )}
+                  
+                  {/* Добавляем секцию с пулами */}
+                  <TokenPools symbol={selectedAsset.data.symbol} />
+                </div>
+              )}
+            </div>
+          ) : (
+            <>
+              <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100 mb-4">Analytics</h2>
+              
+              {/* Диаграмма содержимого кошелька */}
+              <div className="mb-6">
+                <h3 className="text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">Wallet Assets</h3>
+                <div className="border border-zinc-200 dark:border-zinc-700 rounded-lg p-4">
+                  <PieChartAssets
+                    tokenBalances={(userTokens || []).map(t => ({
+                      symbol: t.symbol,
+                      balance: t.balance,
+                      decimals: t.decimals,
+                      value: parseFloat(t.usdPrice || '0')
+                    }))}
+                  />
+                </div>
+              </div>
+
+              {/* Диаграмма протоколов */}
+              {sortedProtocols.length > 0 && (
+                <div>
+                  <h3 className="text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">Protocols</h3>
+                  <div className="border border-zinc-200 dark:border-zinc-700 rounded-lg p-4">
+                    <ProtocolPieChart
+                      protocolBalances={[
+                        { protocol: 'Wallet', value: totalTokenValue },
+                        ...sortedProtocols.map(p => ({
+                          protocol: p.name,
+                          value: p.value
+                        }))
+                      ]}
+                    />
+                  </div>
+                </div>
+              )}
+            </>
+          )}
+        </div>
+      </div>
+      
       {/* Main content area */}
-      <div className="flex flex-col justify-between gap-4 flex-grow pb-20 relative">
+      <div className="flex flex-col justify-between gap-4 flex-grow pb-20 relative w-1/3">
         {/* Мобильный блок статуса кошелька и суммы */}
         {isMobileView && (
           <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50 bg-white/90 dark:bg-zinc-900/90 rounded-xl shadow-lg h-10 px-4 flex items-center gap-3 border border-zinc-200 dark:border-zinc-700">
@@ -1513,15 +1727,20 @@ const Home = () => {
                     onClick={() => {
                       setShowActionButtons(false);
                       if (action.action === 'show-usd-pools') {
-                        viewPoolsTool.execute({ token: 'usd' }).then(result => {
-                          append({
-                            role: 'user',
-                            content: 'Show USD pools'
-                          });
-                          append({
-                            role: 'assistant',
-                            content: JSON.stringify(result)
-                          });
+                        // viewPoolsTool.execute({ token: 'usd' }).then(result => {
+                        append({
+                          role: 'user',
+                          content: 'Show USD pools'
+                        });
+                        append({
+                          role: 'assistant',
+                          content: JSON.stringify({
+                            type: 'ui',
+                            component: 'PoolsView',
+                            props: {
+                              token: 'usd'
+                            }
+                          })
                         });
                       } else if (action.action === 'show-assets-pie-chart') {
                         append({
