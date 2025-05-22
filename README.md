@@ -44,17 +44,17 @@ To learn more about Vercel AI SDK or Next.js take a look at the following resour
 
 | 🏦 Name            | 📖 Read | 💸 Supply | 💰 Withdraw  | 🎁 Rewards|
 |--------------------|---------|-----------|--------------|----------|
-| **SUI Staking**    |   ✅    |   ✅      |   ✅         |   ✅     |
-| **Scallop**        |   ✅    |   ✅      |   ✅         |   ✅     |
-| **Cetus**          |   ✅    |   ✅      |   ✅         |   ✅     |
-| **Navi Protocol**  |   ✅    |   ✅      |   ✅         |   ✅     |
-| **Aftermath**      |   ✅    |   ✅      |   ✅         |   ✅     |
-| **Volo**           |   ✅    |   ✅      |   ✅         |   ✅     |
-| **Turbos Finance** |   ✅    |   ✅      |   ✅         |   ✅     |
-| **Haedal Protocol**|   ✅    |   ✅      |   ✅         |   ✅     |
-| **Suilend**        |   ✅    |   ✅      |   ✅         |   ✅     |
-| **Ika**            |   ✅    |   ✅      |   ✅         |   ✅     |
-| **Bluefin**        |   ✅    |   ✅      |   ✅         |   ✅     |
-| **Momentum**       |   ✅    |   ✅      |   ✅         |   ✅     |
+| **SUI Staking**    |   ✅    |   ❌      |   ❌         |   ❌     |
+| **Scallop**        |   ✅    |   ❌      |   ❌         |   ❌     |
+| **Cetus**          |   ✅    |   ❌      |   ❌         |   ❌     |
+| **Navi Protocol**  |   ✅    |   ❌      |   ❌         |   ✅     |
+| **Aftermath**      |   ✅    |   ❌      |   ❌         |   ❌     |
+| **Volo**           |   ✅    |   ❌      |   ❌         |   ❌     |
+| **Turbos Finance** |   ✅    |   ❌      |   ❌         |   ❌     |
+| **Haedal Protocol**|   ✅    |   ❌      |   ❌         |   ❌     |
+| **Suilend**        |   ✅    |   ❌      |   ❌         |   ❌     |
+| **Ika**            |   ✅    |   ❌      |   ❌         |   ❌     |
+| **Bluefin**        |   ✅    |   ❌      |   ❌         |   ❌     |
+| **Momentum**       |   ✅    |   ❌      |   ❌         |   ✅     |
 
 
