@@ -188,6 +188,23 @@ export function PoolsView({ message, pools }: PoolsViewProps) {
                   >
                     {pool.protocol}
                   </Link>
+                  {pool.protocol.toLowerCase() === 'navi' && (
+                    <button
+                      onClick={() => {
+                        alert(JSON.stringify({
+                          pool: pool.tokens.join(' / '),
+                          apr: (pool.totalApr * 100).toFixed(2) + '%',
+                          type: pool.type,
+                          tvl: pool.tvl,
+                          volume24h: pool.volume_24,
+                          fees24h: pool.fees_24
+                        }, null, 2));
+                      }}
+                      className="ml-2 px-2 py-1 text-xs bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors"
+                    >
+                      Supply
+                    </button>
+                  )}
                 </div>
               </td>
             </tr>

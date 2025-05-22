@@ -564,7 +564,7 @@ export default function ControlPage() {
                   onClick={() => setSelectedAsset(null)}
                 >
                   <ChevronLeft className="h-4 w-4 mr-2" />
-                  Back to assets
+                  Back to overview
                 </Button>
               </div>
               <TokenPools symbol={selectedAsset.data.symbol} />
