@@ -248,7 +248,7 @@ const Home = () => {
   const [isLoadingMomentum, setIsLoadingMomentum] = useState(false);
   const [showRawData, setShowRawData] = useState(false);
   
-  const { messages, input, handleInputChange, handleSubmit, append } = useChat({
+  const { messages, input, handleInputChange, handleSubmit, append, setMessages } = useChat({
     api: '/api/chat',
     maxSteps: 5,
     body: {
@@ -662,6 +662,8 @@ const Home = () => {
           return <WalletView {...result.props} />;
         case 'TokenView':
           return <TokenView {...result.props} />;
+        case 'PieChartAssets':
+          return <PieChartAssets {...result.props} />;
         default:
           return <div>Неизвестный компонент: {result.component}</div>;
       }
@@ -847,24 +849,28 @@ const Home = () => {
                     return (
                       <button
                         onClick={() => {
-                          // setMessages((messages) => [
-                          //   ...messages,
-                          //   <Message key={messages.length} role="assistant" content={<ProtocolPieChart protocolBalances={[
-                          //     { protocol: 'Wallet', value: totalTokenValue },
-                          //     { protocol: 'Scallop', value: scallopData ? 
-                          //       parseFloat(scallopData.totalSupplyValue || "0") +
-                          //       parseFloat(scallopData.totalCollateralValue || "0") +
-                          //       parseFloat(scallopData.totalLockedScaValue || "0") : 0
-                          //     },
-                          //     { protocol: 'Momentum', value: momentumData && momentumData.raw && !momentumData.raw.error ? 
-                          //       momentumData.raw.reduce((sum: number, pos: any) => sum + (pos.amount || 0), 0) : 0
-                          //     },
-                          //     { protocol: 'Bluefin', value: 0 }
-                          //   ]} />} />
-                          // ]);
+                          append({
+                            role: 'user',
+                            content: 'Show Pie chart of my assets'
+                          });
+                          append({
+                            role: 'assistant',
+                            content: JSON.stringify({
+                              type: 'ui',
+                              component: 'PieChartAssets',
+                              props: {
+                                tokenBalances: (userTokens || []).map(t => ({
+                                  symbol: t.symbol,
+                                  balance: t.balance,
+                                  decimals: t.decimals,
+                                  value: parseFloat(t.usdPrice || '0')
+                                }))
+                              }
+                            })
+                          });
                         }}
                         className="p-1 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded transition-colors"
-                        title="Show protocols distribution"
+                        title="Show pie chart of assets"
                       >
                         <PieChart className="w-4 h-4 text-zinc-400" />
                       </button>
@@ -949,10 +955,25 @@ const Home = () => {
                   {(userTokens || []).length > 0 && (
                     <button
                       onClick={() => {
-                        // setMessages((messages) => [
-                        //   ...messages,
-                        //   <Message key={messages.length} role="assistant" content={<PieChartAssets tokenBalances={(userTokens || []).map(t => ({ symbol: t.symbol, balance: t.balance, decimals: t.decimals, value: parseFloat(t.usdPrice || '0') }))} />} />
-                        // ]);
+                        append({
+                          role: 'user',
+                          content: 'Show Pie chart of my assets'
+                        });
+                        append({
+                          role: 'assistant',
+                          content: JSON.stringify({
+                            type: 'ui',
+                            component: 'PieChartAssets',
+                            props: {
+                              tokenBalances: (userTokens || []).map(t => ({
+                                symbol: t.symbol,
+                                balance: t.balance,
+                                decimals: t.decimals,
+                                value: parseFloat(t.usdPrice || '0')
+                              }))
+                            }
+                          })
+                        });
                       }}
                       className="p-1 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded transition-colors ml-2"
                       title="Show pie chart of assets"
@@ -1434,49 +1455,26 @@ const Home = () => {
               key={message.id}
               className={`flex w-full md:max-w-[750px] ${message.role === 'user' ? 'justify-end' : 'justify-start'} ${idx === 0 ? 'pt-20' : ''}`}
             >
-              {message.parts?.some(
-                (part) => part.type === 'tool-invocation' && part.toolInvocation.state === 'result' && part.toolInvocation.result?.type === 'ui'
-              ) ? (
-                <div className="w-full max-w-none rounded-lg p-3 bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100">
-                  {message.parts?.map((part, index) => {
-                    if (part.type === 'tool-invocation' && part.toolInvocation.state === 'result') {
-                      return <div key={index}>{renderToolResult(part.toolInvocation.result)}</div>;
-                    } else if (part.type === 'text') {
-                      return <div key={index} className="text-sm">{part.text}</div>;
-                    } else {
-                      return null;
-                    }
-                  })}
-                </div>
-              ) : (
-                <div className={`max-w-[80%] rounded-lg p-3 ${
-                  message.role === 'user' 
-                    ? 'bg-blue-500 text-white' 
-                    : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100'
-                }`}>
-                  {message.parts?.map((part, index) => {
-                    switch (part.type) {
-                      case 'text':
-                        return <div key={index} className="text-sm">{part.text}</div>;
-                      case 'tool-invocation':
-                        return (
-                          <div key={index} className="mt-2">
-                            <div className="text-sm">
-                              {part.toolInvocation.state === 'partial-call' && 
-                                `Preparing to call ${part.toolInvocation.toolName}...`}
-                              {part.toolInvocation.state === 'call' && 
-                                `Executing ${part.toolInvocation.toolName}...`}
-                              {part.toolInvocation.state === 'result' && 
-                                renderToolResult(part.toolInvocation.result)}
-                            </div>
-                          </div>
-                        );
-                      default:
-                        return null;
-                    }
-                  })}
-                </div>
-              )}
+              {(() => {
+                let content;
+                try {
+                  const parsed = JSON.parse(message.content);
+                  if (parsed && parsed.type === 'ui') {
+                    content = renderToolResult(parsed);
+                  }
+                } catch {
+                  content = message.content;
+                }
+                return (
+                  <div className={`max-w-[80%] rounded-lg p-3 ${
+                    message.role === 'user' 
+                      ? 'bg-blue-500 text-white' 
+                      : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100'
+                  }`}>
+                    {content}
+                  </div>
+                );
+              })()}
             </div>
           ))}
           <div ref={messagesEndRef} />
@@ -1504,6 +1502,26 @@ const Home = () => {
                         append({
                           role: 'user',
                           content: 'Show USD pools'
+                        });
+                      } else if (action.action === 'show-assets-pie-chart') {
+                        append({
+                          role: 'user',
+                          content: 'Show Pie chart of my assets'
+                        });
+                        append({
+                          role: 'assistant',
+                          content: JSON.stringify({
+                            type: 'ui',
+                            component: 'PieChartAssets',
+                            props: {
+                              tokenBalances: (userTokens || []).map(t => ({
+                                symbol: t.symbol,
+                                balance: t.balance,
+                                decimals: t.decimals,
+                                value: parseFloat(t.usdPrice || '0')
+                              }))
+                            }
+                          })
                         });
                       }
                     }}
