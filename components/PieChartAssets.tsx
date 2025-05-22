@@ -17,7 +17,7 @@ interface PieChartAssetsProps {
 export function PieChartAssets({ tokenBalances }: PieChartAssetsProps) {
   const safeTokenBalances = Array.isArray(tokenBalances) ? tokenBalances : [];
   if (!safeTokenBalances.length) {
-    return <div className="text-center text-zinc-500 py-8">Нет данных для отображения диаграммы</div>;
+    return <div className="text-center text-zinc-500 py-8">No data available for chart display</div>;
   }
   // Считаем общую сумму
   const totalValue = safeTokenBalances.reduce((sum, t) => sum + t.value, 0);

@@ -537,9 +537,9 @@ const Home = () => {
 
   // Обновляем suggestedActions
   const suggestedActions = [
-    { title: "Check", label: "Scallop Balance", action: "check-scallop-balance" },
+    { title: "Show me", label: "Pie chart of assets in protocols", action: "show-protocols-pie-chart" },
     { title: "Check", label: "Momentum Balance", action: "check-momentum-balance" },
-    { title: "Show me", label: "Pie chart of my assets", action: "show-assets-pie-chart" },
+    { title: "Show me", label: "Pie chart of assets in wallet", action: "show-assets-pie-chart" },
     { title: "Show", label: "USD pools", action: "show-usd-pools" }
   ];
 
@@ -664,6 +664,8 @@ const Home = () => {
           return <TokenView {...result.props} />;
         case 'PieChartAssets':
           return <PieChartAssets {...result.props} />;
+        case 'ProtocolPieChart':
+          return <ProtocolPieChart {...result.props} />;
         default:
           return <div>Неизвестный компонент: {result.component}</div>;
       }
@@ -835,42 +837,53 @@ const Home = () => {
                 <div className="flex items-center gap-2">
                   {wallet.connected && (() => {
                     const protocolBalances = [
-                      scallopData ? (
+                      { protocol: 'Wallet', value: totalTokenValue },
+                      { protocol: 'Scallop', value: scallopData ? (
                         parseFloat(scallopData.totalSupplyValue || "0") +
                         parseFloat(scallopData.totalCollateralValue || "0") +
                         parseFloat(scallopData.totalLockedScaValue || "0")
-                      ) : 0,
-                      momentumData && momentumData.raw && !momentumData.raw.error ?
-                        momentumData.raw.reduce((sum: number, pos: any) => sum + (pos.amount || 0), 0) : 0,
-                      0 // Bluefin
+                      ) : 0 },
+                      { protocol: 'Momentum', value: momentumData && momentumData.raw && !momentumData.raw.error ?
+                        momentumData.raw.reduce((sum: number, pos: any) => sum + (pos.amount || 0), 0) : 0 }
                     ];
-                    const hasNonZero = protocolBalances.some(v => v > 0);
+
+                    // Добавляем протоколы из Finkeeper
+                    if (finkeeperData?.data.walletIdPlatformList[0]?.platformList) {
+                      finkeeperData.data.walletIdPlatformList[0].platformList
+                        .filter(platform => !['Scallop', 'Momentum'].includes(platform.platformName))
+                        .forEach(platform => {
+                          const value = parseFloat(platform.currencyAmount);
+                          if (value > 0) {
+                            protocolBalances.push({
+                              protocol: platform.platformName,
+                              value: value
+                            });
+                          }
+                        });
+                    }
+
+                    const hasNonZero = protocolBalances.some(v => v.value > 0);
                     if (!hasNonZero) return null;
                     return (
                       <button
                         onClick={() => {
                           append({
                             role: 'user',
-                            content: 'Show Pie chart of my assets'
+                            content: 'Show Pie chart of my protocols'
                           });
                           append({
                             role: 'assistant',
                             content: JSON.stringify({
                               type: 'ui',
-                              component: 'PieChartAssets',
+                              component: 'ProtocolPieChart',
                               props: {
-                                tokenBalances: (userTokens || []).map(t => ({
-                                  symbol: t.symbol,
-                                  balance: t.balance,
-                                  decimals: t.decimals,
-                                  value: parseFloat(t.usdPrice || '0')
-                                }))
+                                protocolBalances
                               }
                             })
                           });
                         }}
                         className="p-1 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded transition-colors"
-                        title="Show pie chart of assets"
+                        title="Show pie chart of protocols"
                       >
                         <PieChart className="w-4 h-4 text-zinc-400" />
                       </button>
@@ -1520,6 +1533,47 @@ const Home = () => {
                                 decimals: t.decimals,
                                 value: parseFloat(t.usdPrice || '0')
                               }))
+                            }
+                          })
+                        });
+                      } else if (action.action === 'show-protocols-pie-chart') {
+                        const protocolBalances = [
+                          { protocol: 'Wallet', value: totalTokenValue },
+                          { protocol: 'Scallop', value: scallopData ? (
+                            parseFloat(scallopData.totalSupplyValue || "0") +
+                            parseFloat(scallopData.totalCollateralValue || "0") +
+                            parseFloat(scallopData.totalLockedScaValue || "0")
+                          ) : 0 },
+                          { protocol: 'Momentum', value: momentumData && momentumData.raw && !momentumData.raw.error ?
+                            momentumData.raw.reduce((sum: number, pos: any) => sum + (pos.amount || 0), 0) : 0 }
+                        ];
+
+                        // Добавляем протоколы из Finkeeper
+                        if (finkeeperData?.data.walletIdPlatformList[0]?.platformList) {
+                          finkeeperData.data.walletIdPlatformList[0].platformList
+                            .filter(platform => !['Scallop', 'Momentum'].includes(platform.platformName))
+                            .forEach(platform => {
+                              const value = parseFloat(platform.currencyAmount);
+                              if (value > 0) {
+                                protocolBalances.push({
+                                  protocol: platform.platformName,
+                                  value: value
+                                });
+                              }
+                            });
+                        }
+
+                        append({
+                          role: 'user',
+                          content: 'Show Pie chart of my protocols'
+                        });
+                        append({
+                          role: 'assistant',
+                          content: JSON.stringify({
+                            type: 'ui',
+                            component: 'ProtocolPieChart',
+                            props: {
+                              protocolBalances
                             }
                           })
                         });
