@@ -210,7 +210,7 @@ export default function ControlPage() {
   const [selectedAsset, setSelectedAsset] = useState<{ type: string; data: TokenWithBalance; name: string; value: number; logo?: string } | null>(null);
   const [userTokens, setUserTokens] = useState<TokenWithBalance[]>([]);
   const [isLoadingAssets, setIsLoadingAssets] = useState(false);
-  const [hideSmallAssets, setHideSmallAssets] = useState(false);
+  const [hideSmallAssets, setHideSmallAssets] = useState(true);
   const [showTokens, setShowTokens] = useState(true);
   const [showPositions, setShowPositions] = useState(true);
   const [momentumData, setMomentumData] = useState<any>(null);
@@ -482,22 +482,32 @@ export default function ControlPage() {
               {/* Wallet section */}
               <div className="mb-4 border border-zinc-200 dark:border-zinc-700 rounded-lg overflow-hidden">
                 <div className="flex flex-row items-center justify-between p-3 bg-zinc-50 dark:bg-zinc-900">
-                  <div className="flex-1">
+                  <div className="flex-1 flex justify-between items-center">
                     <button
                       onClick={() => setShowTokens(!showTokens)}
                       className="flex items-center gap-2 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors rounded px-2 py-1"
                     >
                       <CreditCard className="h-4 w-4 text-blue-500" />
                       <span className="font-medium text-zinc-900 dark:text-zinc-100">
-                        Wallet {wallet.connected ? `$${formatNumber(userTokens.reduce((sum, token) => sum + parseFloat(token.usdPrice || '0'), 0))}` : ''}
+                        Wallet
                       </span>
-                      {showTokens ? (
-                        <ChevronDown className="h-4 w-4 text-zinc-500" />
-                      ) : (
-                        <ChevronRight className="h-4 w-4 text-zinc-500" />
-                      )}
                     </button>
+                    {wallet.connected && (
+                      <span className="font-medium text-zinc-900 dark:text-zinc-100">
+                        ${formatNumber(userTokens.reduce((sum, token) => sum + parseFloat(token.usdPrice || '0'), 0))}
+                      </span>
+                    )}
                   </div>
+                  <button
+                    onClick={() => setShowTokens(!showTokens)}
+                    className="ml-2 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors rounded p-1"
+                  >
+                    {showTokens ? (
+                      <ChevronDown className="h-4 w-4 text-zinc-500" />
+                    ) : (
+                      <ChevronRight className="h-4 w-4 text-zinc-500" />
+                    )}
+                  </button>
                 </div>
                 
                 {showTokens && (
@@ -573,7 +583,7 @@ export default function ControlPage() {
               {/* Momentum Protocol Block */}
               <div className="mb-4 border border-zinc-200 dark:border-zinc-700 rounded-lg overflow-hidden">
                 <div className="flex flex-row items-center justify-between p-3 bg-zinc-50 dark:bg-zinc-900">
-                  <div className="flex-1">
+                  <div className="flex-1 flex justify-between items-center">
                     <button
                       onClick={() => setShowMomentum(!showMomentum)}
                       className="flex items-center gap-2 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors rounded px-2 py-1"
@@ -586,15 +596,25 @@ export default function ControlPage() {
                         className="rounded"
                       />
                       <span className="font-medium text-zinc-900 dark:text-zinc-100">
-                        Momentum {momentumData && momentumData.length > 0 ? `$${formatNumber(momentumData.reduce((sum: number, pos: any) => sum + (pos.amount || 0), 0))}` : ''}
+                        Momentum
                       </span>
-                      {showMomentum ? (
-                        <ChevronDown className="h-4 w-4 text-zinc-500" />
-                      ) : (
-                        <ChevronRight className="h-4 w-4 text-zinc-500" />
-                      )}
                     </button>
+                    {momentumData && momentumData.length > 0 && (
+                      <span className="font-medium text-zinc-900 dark:text-zinc-100">
+                        ${formatNumber(momentumData.reduce((sum: number, pos: any) => sum + (pos.amount || 0), 0))}
+                      </span>
+                    )}
                   </div>
+                  <button
+                    onClick={() => setShowMomentum(!showMomentum)}
+                    className="ml-2 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors rounded p-1"
+                  >
+                    {showMomentum ? (
+                      <ChevronDown className="h-4 w-4 text-zinc-500" />
+                    ) : (
+                      <ChevronRight className="h-4 w-4 text-zinc-500" />
+                    )}
+                  </button>
                 </div>
                 
                 {showMomentum && (
@@ -640,7 +660,7 @@ export default function ControlPage() {
               {/* Scallop Protocol Block */}
               <div className="mb-4 border border-zinc-200 dark:border-zinc-700 rounded-lg overflow-hidden">
                 <div className="flex flex-row items-center justify-between p-3 bg-zinc-50 dark:bg-zinc-900">
-                  <div className="flex-1">
+                  <div className="flex-1 flex justify-between items-center">
                     <button
                       onClick={() => setShowScallop(!showScallop)}
                       className="flex items-center gap-2 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors rounded px-2 py-1"
@@ -653,15 +673,25 @@ export default function ControlPage() {
                         className="rounded"
                       />
                       <span className="font-medium text-zinc-900 dark:text-zinc-100">
-                        Scallop {scallopData && scallopData.lendings && scallopData.lendings.length > 0 ? `$${formatNumber(scallopData.lendings.reduce((sum: number, lending: any) => sum + (lending.suppliedValue || 0), 0))}` : ''}
+                        Scallop
                       </span>
-                      {showScallop ? (
-                        <ChevronDown className="h-4 w-4 text-zinc-500" />
-                      ) : (
-                        <ChevronRight className="h-4 w-4 text-zinc-500" />
-                      )}
                     </button>
+                    {scallopData && scallopData.lendings && scallopData.lendings.length > 0 && (
+                      <span className="font-medium text-zinc-900 dark:text-zinc-100">
+                        ${formatNumber(scallopData.lendings.reduce((sum: number, lending: any) => sum + (lending.suppliedValue || 0), 0))}
+                      </span>
+                    )}
                   </div>
+                  <button
+                    onClick={() => setShowScallop(!showScallop)}
+                    className="ml-2 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors rounded p-1"
+                  >
+                    {showScallop ? (
+                      <ChevronDown className="h-4 w-4 text-zinc-500" />
+                    ) : (
+                      <ChevronRight className="h-4 w-4 text-zinc-500" />
+                    )}
+                  </button>
                 </div>
                 
                 {showScallop && (
