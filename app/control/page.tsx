@@ -69,6 +69,7 @@ const formatNumber = (num: number | string, digits = 2) => {
 const TokenPools = ({ symbol }: { symbol: string }) => {
   const [pools, setPools] = useState<any[]>([]);
   const [isLoadingPools, setIsLoadingPools] = useState(false);
+  const [selectedType, setSelectedType] = useState<'stable' | 'risk'>('stable');
 
   useEffect(() => {
     const abortController = new AbortController();
@@ -135,6 +136,27 @@ const TokenPools = ({ symbol }: { symbol: string }) => {
     };
   }, [symbol]);
 
+  const stablePools = pools.filter(pool => {
+    if (pool.type.toLowerCase().includes('lending')) return true;
+    if (['bluefin', 'momentum'].includes(pool.protocol.toLowerCase())) {
+      const token1 = pool.token1?.toUpperCase() || '';
+      const token2 = pool.token2?.toUpperCase() || '';
+      return token1.includes('USD') && token2.includes('USD') || 
+             token1.slice(-3) === token2.slice(-3);
+    }
+    return true;
+  });
+
+  const riskPools = pools.filter(pool => {
+    if (['bluefin', 'momentum'].includes(pool.protocol.toLowerCase())) {
+      const token1 = pool.token1?.toUpperCase() || '';
+      const token2 = pool.token2?.toUpperCase() || '';
+      return !(token1.includes('USD') && token2.includes('USD') || 
+              token1.slice(-3) === token2.slice(-3));
+    }
+    return false;
+  });
+
   if (isLoadingPools) {
     return (
       <div className="flex justify-center items-center h-64">
@@ -166,109 +188,11 @@ const TokenPools = ({ symbol }: { symbol: string }) => {
           Found {pools.length} pools where you can earn rewards
         </p>
       </div>
-      <PoolsView message={`Found ${pools.length} pools`} pools={pools} />
-    </div>
-  );
-};
 
-// Компонент для отображения таблицы пулов
-const PoolsTable = ({ data }: { data: PoolsData }) => {
-  const [sortConfig, setSortConfig] = useState<{
-    key: keyof Pool;
-    direction: 'asc' | 'desc';
-  }>({ key: 'total_apr', direction: 'desc' });
-
-  const poolsArray = Object.entries(data).flatMap(([protocol, pools]) =>
-    Object.entries(pools).map(([_, pool]) => ({
-      ...pool,
-      protocol
-    }))
-  );
-
-  const sortedPools = [...poolsArray].sort((a, b) => {
-    const aValue = a[sortConfig.key];
-    const bValue = b[sortConfig.key];
-
-    if (typeof aValue === 'string' && typeof bValue === 'string') {
-      return sortConfig.direction === 'asc'
-        ? aValue.localeCompare(bValue)
-        : bValue.localeCompare(aValue);
-    }
-
-    const aNum = typeof aValue === 'string' ? parseFloat(aValue) : aValue;
-    const bNum = typeof bValue === 'string' ? parseFloat(bValue) : bValue;
-
-    return sortConfig.direction === 'asc'
-      ? (aNum || 0) - (bNum || 0)
-      : (bNum || 0) - (aNum || 0);
-  });
-
-  const requestSort = (key: keyof Pool) => {
-    setSortConfig(current => ({
-      key,
-      direction: current.key === key && current.direction === 'desc' ? 'asc' : 'desc'
-    }));
-  };
-
-  return (
-    <div className="overflow-x-auto">
-      <table className="w-full border-collapse">
-        <thead>
-          <tr className="bg-zinc-50 dark:bg-zinc-800">
-            <th className="p-3 text-left text-sm font-medium text-zinc-500 dark:text-zinc-400 cursor-pointer" onClick={() => requestSort('protocol')}>
-              Protocol
-            </th>
-            <th className="p-3 text-left text-sm font-medium text-zinc-500 dark:text-zinc-400 cursor-pointer" onClick={() => requestSort('token1')}>
-              Token 1
-            </th>
-            <th className="p-3 text-left text-sm font-medium text-zinc-500 dark:text-zinc-400 cursor-pointer" onClick={() => requestSort('token2')}>
-              Token 2
-            </th>
-            <th className="p-3 text-left text-sm font-medium text-zinc-500 dark:text-zinc-400 cursor-pointer" onClick={() => requestSort('total_apr')}>
-              APR
-            </th>
-            <th className="p-3 text-left text-sm font-medium text-zinc-500 dark:text-zinc-400 cursor-pointer" onClick={() => requestSort('tvl')}>
-              TVL
-            </th>
-            <th className="p-3 text-left text-sm font-medium text-zinc-500 dark:text-zinc-400 cursor-pointer" onClick={() => requestSort('volume_24')}>
-              24h Volume
-            </th>
-            <th className="p-3 text-left text-sm font-medium text-zinc-500 dark:text-zinc-400 cursor-pointer" onClick={() => requestSort('fees_24')}>
-              24h Fees
-            </th>
-          </tr>
-        </thead>
-        <tbody>
-          {sortedPools.map((pool, index) => (
-            <tr key={index} className="border-b border-zinc-200 dark:border-zinc-700 hover:bg-zinc-50 dark:hover:bg-zinc-800">
-              <td className="p-3">
-                <div className="flex items-center gap-2">
-                  <Image
-                    src={`/protocols/${pool.protocol}.png`}
-                    alt={pool.protocol}
-                    width={20}
-                    height={20}
-                    className="rounded-sm"
-                  />
-                  <span className="capitalize">{pool.protocol}</span>
-                </div>
-              </td>
-              <td className="p-3">{pool.token1}</td>
-              <td className="p-3">{pool.token2 || '-'}</td>
-              <td className="p-3">
-                <span className="text-emerald-600 dark:text-emerald-400">
-                  {typeof pool.total_apr === 'string' 
-                    ? parseFloat(pool.total_apr).toFixed(2)
-                    : pool.total_apr.toFixed(2)}%
-                </span>
-              </td>
-              <td className="p-3">${parseFloat(pool.tvl).toLocaleString()}</td>
-              <td className="p-3">${parseFloat(pool.volume_24 || '0').toLocaleString()}</td>
-              <td className="p-3">${parseFloat(pool.fees_24 || '0').toLocaleString()}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+      <PoolsView 
+        message={`No pools found for ${symbol}`}
+        pools={pools}
+      />
     </div>
   );
 };
@@ -288,6 +212,15 @@ export default function ControlPage() {
   const [isLoadingAssets, setIsLoadingAssets] = useState(false);
   const [hideSmallAssets, setHideSmallAssets] = useState(false);
   const [showTokens, setShowTokens] = useState(true);
+
+  // Преобразуем poolsData в массив пулов
+  const filteredPools = poolsData ? Object.entries(poolsData).flatMap(([protocol, pools]) =>
+    Object.entries(pools).map(([_, pool]) => ({
+      ...pool,
+      protocol,
+      tokens: [pool.token1, pool.token2].filter(Boolean)
+    }))
+  ) : [];
 
   // Проверяем мобильное отображение
   useEffect(() => {
@@ -578,9 +511,6 @@ export default function ControlPage() {
                 )}
               </div>
 
-              {selectedAsset && selectedAsset.type === 'token' && (
-                <TokenPools symbol={selectedAsset.data.symbol} />
-              )}
             </div>
           </motion.div>
         )}
@@ -640,18 +570,14 @@ export default function ControlPage() {
               <TokenPools symbol={selectedAsset.data.symbol} />
             </div>
           ) : (
-            <>
-              <h1 className="text-2xl font-bold mb-6">Pools Overview</h1>
-              {isLoading ? (
-                <div className="flex justify-center items-center h-64">
-                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-zinc-900 dark:border-white"></div>
-                </div>
-              ) : poolsData ? (
-                <PoolsTable data={poolsData} />
-              ) : (
-                <div className="text-center text-zinc-500">No pools data available</div>
-              )}
-            </>
+            <div className="text-center py-8">
+              <div className="text-lg font-medium text-zinc-900 dark:text-zinc-100 mb-2">
+                Select a token to see earning opportunities
+              </div>
+              <p className="text-sm text-zinc-500">
+                Click on any token from your wallet to discover pools and strategies
+              </p>
+            </div>
           )}
         </div>
       </div>
