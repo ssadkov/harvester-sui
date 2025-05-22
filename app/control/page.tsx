@@ -664,7 +664,7 @@ export default function ControlPage() {
                       </span>
                     </div>
                     {wallet.connected && (
-                      <span className="font-medium text-zinc-900 dark:text-zinc-100">
+                      <span className="font-bold text-zinc-900 dark:text-zinc-100">
                         ${formatNumber(userTokens.reduce((sum, token) => sum + parseFloat(token.usdPrice || '0'), 0))}
                       </span>
                     )}
@@ -732,6 +732,11 @@ export default function ControlPage() {
                               </div>
                             </div>
                           ))}
+                        {hideSmallAssets && userTokens.filter(token => parseFloat(token.usdPrice || '0') < 1).length > 0 && (
+                          <div className="text-xs text-zinc-500 mt-2">
+                            {userTokens.filter(token => parseFloat(token.usdPrice || '0') < 1).length} assets hidden
+                          </div>
+                        )}
                       </div>
                     ) : wallet.connected ? (
                       <div className="text-center py-4 text-sm text-zinc-500">
@@ -955,11 +960,11 @@ export default function ControlPage() {
                                       <div className="flex items-center gap-2">
                                         <span className="font-medium">{investment.investmentName}</span>
                                         <span className={`text-xs px-1.5 py-0.5 rounded ${
-                                          investment.investType === 1 
-                                            ? 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400'
-                                            : 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-400'
+                                          investment.investName === 'Borrow'
+                                            ? 'bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400'
+                                            : 'bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-400'
                                         }`}>
-                                          {investment.investType === 1 ? 'Stable' : 'Risk'}
+                                          {investment.investName}
                                         </span>
                                       </div>
                                       <span className="font-medium">
@@ -991,12 +996,24 @@ export default function ControlPage() {
                                             </div>
                                           </div>
                                         ))}
+                                      {hideSmallAssets && investment.assetsTokenList.filter(token => parseFloat(token.currencyAmount) < 1).length > 0 && (
+                                        <div className="text-xs text-zinc-500">
+                                          {investment.assetsTokenList.filter(token => parseFloat(token.currencyAmount) < 1).length} assets hidden
+                                        </div>
+                                      )}
                                     </div>
 
                                     {/* Награды */}
                                     {investment.rewardDefiTokenInfo[0]?.baseDefiTokenInfos.length > 0 && (
                                       <div className="mt-2 pt-2 border-t border-zinc-200 dark:border-zinc-700">
-                                        <div className="text-sm font-medium mb-2">Rewards</div>
+                                        <div className="flex justify-between items-center mb-2">
+                                          <div className="text-sm font-medium">Rewards</div>
+                                          {hideSmallAssets && investment.rewardDefiTokenInfo[0].baseDefiTokenInfos.filter(token => parseFloat(token.currencyAmount) < 1).length > 0 && (
+                                            <div className="text-xs text-zinc-500">
+                                              {investment.rewardDefiTokenInfo[0].baseDefiTokenInfos.filter(token => parseFloat(token.currencyAmount) < 1).length} assets hidden
+                                            </div>
+                                          )}
+                                        </div>
                                         <div className="space-y-2">
                                           {investment.rewardDefiTokenInfo[0].baseDefiTokenInfos
                                             .filter(token => !hideSmallAssets || parseFloat(token.currencyAmount) >= 1)
@@ -1062,7 +1079,7 @@ export default function ControlPage() {
                           </span>
                         </div>
                         {protocol.value > 0 && (
-                          <span className="font-medium text-zinc-900 dark:text-zinc-100">
+                          <span className="font-bold text-zinc-900 dark:text-zinc-100">
                             ${formatNumber(protocol.value)}
                           </span>
                         )}
