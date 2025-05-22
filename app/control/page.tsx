@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { useWallet } from '@suiet/wallet-kit';
 import { ConnectButton } from '@suiet/wallet-kit';
-import { Wallet, ChevronRight, ChevronDown, Menu, CreditCard, ChevronLeft, Copy, PieChart } from "lucide-react";
+import { Wallet, ChevronRight, ChevronDown, Menu, CreditCard, ChevronLeft, Copy, PieChart, Gift } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import Image from "next/image";
 import { motion, AnimatePresence } from "framer-motion";
@@ -11,6 +11,7 @@ import { PoolsView } from '../components/chat/PoolsView';
 import { processPoolsData } from '@/utils/poolUtils';
 import { formatTokenBalance, formatUSDValue } from '@/app/utils/format';
 import { Token, sortTokensByValue, fetchMomentumBalance, fetchScallopBalance } from '@/app/actions/balance-actions';
+import { createClaimAllTx, initMomentumSDK } from '@/app/utils/momentum-utils';
 
 // Интерфейсы для данных
 interface Pool {
@@ -216,8 +217,8 @@ export default function ControlPage() {
   const [momentumData, setMomentumData] = useState<any>(null);
   const [scallopData, setScallopData] = useState<any>(null);
   const [isLoadingPositions, setIsLoadingPositions] = useState(false);
-  const [showMomentum, setShowMomentum] = useState(true);
-  const [showScallop, setShowScallop] = useState(true);
+  const [showMomentum, setShowMomentum] = useState(false);
+  const [showScallop, setShowScallop] = useState(false);
 
   // Преобразуем poolsData в массив пулов
   const filteredPools = poolsData ? Object.entries(poolsData).flatMap(([protocol, pools]) =>
@@ -331,11 +332,28 @@ export default function ControlPage() {
     try {
       // Получаем данные Momentum
       const momentumResult = await fetchMomentumBalance(wallet.account.address);
+      console.log('Momentum API response:', momentumResult);
       setMomentumData(momentumResult.raw || []);
 
       // Получаем данные Scallop
       const scallopResult = await fetchScallopBalance(wallet.account.address);
       setScallopData(scallopResult.raw || null);
+
+      // Проверяем наличие позиций и устанавливаем начальное состояние блоков
+      const hasMomentumPositions = Array.isArray(momentumResult.raw) && momentumResult.raw.length > 0;
+      const hasScallopPositions = scallopResult.raw && scallopResult.raw.lendings && scallopResult.raw.lendings.length > 0;
+      
+      // Если нет позиций ни в одном протоколе, показываем только Wallet
+      if (!hasMomentumPositions && !hasScallopPositions) {
+        setShowTokens(true);
+        setShowMomentum(false);
+        setShowScallop(false);
+      } else {
+        // Если есть позиции, сворачиваем все блоки
+        setShowTokens(false);
+        setShowMomentum(false);
+        setShowScallop(false);
+      }
     } catch (error) {
       console.error('Error fetching positions:', error);
     } finally {
@@ -481,33 +499,28 @@ export default function ControlPage() {
 
               {/* Wallet section */}
               <div className="mb-4 border border-zinc-200 dark:border-zinc-700 rounded-lg overflow-hidden">
-                <div className="flex flex-row items-center justify-between p-3 bg-zinc-50 dark:bg-zinc-900">
+                <div 
+                  onClick={() => setShowTokens(!showTokens)}
+                  className="flex flex-row items-center justify-between p-3 bg-zinc-50 dark:bg-zinc-900 cursor-pointer hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
+                >
                   <div className="flex-1 flex justify-between items-center">
-                    <button
-                      onClick={() => setShowTokens(!showTokens)}
-                      className="flex items-center gap-2 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors rounded px-2 py-1"
-                    >
+                    <div className="flex items-center gap-2">
                       <CreditCard className="h-4 w-4 text-blue-500" />
                       <span className="font-medium text-zinc-900 dark:text-zinc-100">
                         Wallet
                       </span>
-                    </button>
+                    </div>
                     {wallet.connected && (
                       <span className="font-medium text-zinc-900 dark:text-zinc-100">
                         ${formatNumber(userTokens.reduce((sum, token) => sum + parseFloat(token.usdPrice || '0'), 0))}
                       </span>
                     )}
                   </div>
-                  <button
-                    onClick={() => setShowTokens(!showTokens)}
-                    className="ml-2 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors rounded p-1"
-                  >
-                    {showTokens ? (
-                      <ChevronDown className="h-4 w-4 text-zinc-500" />
-                    ) : (
-                      <ChevronRight className="h-4 w-4 text-zinc-500" />
-                    )}
-                  </button>
+                  {showTokens ? (
+                    <ChevronDown className="h-4 w-4 text-zinc-500" />
+                  ) : (
+                    <ChevronRight className="h-4 w-4 text-zinc-500" />
+                  )}
                 </div>
                 
                 {showTokens && (
@@ -582,12 +595,12 @@ export default function ControlPage() {
 
               {/* Momentum Protocol Block */}
               <div className="mb-4 border border-zinc-200 dark:border-zinc-700 rounded-lg overflow-hidden">
-                <div className="flex flex-row items-center justify-between p-3 bg-zinc-50 dark:bg-zinc-900">
+                <div 
+                  onClick={() => setShowMomentum(!showMomentum)}
+                  className="flex flex-row items-center justify-between p-3 bg-zinc-50 dark:bg-zinc-900 cursor-pointer hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
+                >
                   <div className="flex-1 flex justify-between items-center">
-                    <button
-                      onClick={() => setShowMomentum(!showMomentum)}
-                      className="flex items-center gap-2 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors rounded px-2 py-1"
-                    >
+                    <div className="flex items-center gap-2">
                       <Image
                         src="https://app.mmt.finance/assets/images/momentum-logo-sq.svg"
                         alt="Momentum"
@@ -598,23 +611,18 @@ export default function ControlPage() {
                       <span className="font-medium text-zinc-900 dark:text-zinc-100">
                         Momentum
                       </span>
-                    </button>
+                    </div>
                     {momentumData && momentumData.length > 0 && (
                       <span className="font-medium text-zinc-900 dark:text-zinc-100">
                         ${formatNumber(momentumData.reduce((sum: number, pos: any) => sum + (pos.amount || 0), 0))}
                       </span>
                     )}
                   </div>
-                  <button
-                    onClick={() => setShowMomentum(!showMomentum)}
-                    className="ml-2 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors rounded p-1"
-                  >
-                    {showMomentum ? (
-                      <ChevronDown className="h-4 w-4 text-zinc-500" />
-                    ) : (
-                      <ChevronRight className="h-4 w-4 text-zinc-500" />
-                    )}
-                  </button>
+                  {showMomentum ? (
+                    <ChevronDown className="h-4 w-4 text-zinc-500" />
+                  ) : (
+                    <ChevronRight className="h-4 w-4 text-zinc-500" />
+                  )}
                 </div>
                 
                 {showMomentum && (
@@ -625,23 +633,89 @@ export default function ControlPage() {
                       </div>
                     ) : wallet.connected ? (
                       momentumData && momentumData.length > 0 ? (
-                        <div className="space-y-2">
-                          {momentumData.map((position: any, index: number) => (
-                            <div key={index} className="p-2 rounded-lg bg-zinc-50 dark:bg-zinc-800/50">
-                              <div className="text-sm">
-                                <div className="flex justify-between">
-                                  <span>Value:</span>
-                                  <span className="font-medium">${formatNumber(position.amount)}</span>
-                                </div>
-                                {position.claimableRewards > 0 && (
-                                  <div className="flex justify-between text-green-600">
-                                    <span>Rewards:</span>
-                                    <span className="font-medium">${formatNumber(position.claimableRewards)}</span>
-                                  </div>
-                                )}
+                        <div className="space-y-4">
+                          {/* Total Rewards and Claim Button */}
+                          {console.log('Momentum data:', momentumData)}
+                          {console.log('Has rewards:', momentumData.some((pos: any) => pos.claimableRewards > 0))}
+                          {momentumData.some((pos: any) => pos.claimableRewards > 0) && (
+                            <div className="flex items-center justify-between p-2 rounded-lg bg-emerald-50 dark:bg-emerald-900/20">
+                              <div className="flex items-center gap-2">
+                                <Gift className="h-4 w-4 text-emerald-500" />
+                                <span className="text-sm text-emerald-600 dark:text-emerald-400">
+                                  Total Rewards: ${formatNumber(momentumData.reduce((sum: number, pos: any) => sum + (pos.claimableRewards || 0), 0))}
+                                </span>
                               </div>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="text-emerald-600 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800 hover:bg-emerald-100 dark:hover:bg-emerald-800/50"
+                                onClick={async () => {
+                                  if (!wallet.account) return;
+                                  try {
+                                    const sdk = initMomentumSDK();
+                                    const tx = await createClaimAllTx(sdk, wallet.account.address);
+                                    await wallet.signAndExecuteTransactionBlock({
+                                      transactionBlock: tx as any,
+                                    });
+                                    // Обновляем данные после успешной транзакции
+                                    fetchUserPositions();
+                                  } catch (error) {
+                                    console.error('Error claiming rewards:', error);
+                                  }
+                                }}
+                              >
+                                Claim All
+                              </Button>
                             </div>
-                          ))}
+                          )}
+
+                          {/* Positions List */}
+                          <div className="space-y-2">
+                            {momentumData.map((position: any, index: number) => (
+                              <div key={index} className="p-3 rounded-lg bg-zinc-50 dark:bg-zinc-800/50">
+                                <div className="text-sm space-y-2">
+                                  <div className="flex justify-between items-center">
+                                    <span className="font-medium">Pool:</span>
+                                    <span className="text-zinc-900 dark:text-zinc-100">
+                                      {position.token0Symbol}/{position.token1Symbol}
+                                    </span>
+                                  </div>
+                                  <div className="flex justify-between">
+                                    <span>Value:</span>
+                                    <span className="font-medium">${formatNumber(position.amount)}</span>
+                                  </div>
+                                  <div className="flex justify-between">
+                                    <span>Status:</span>
+                                    <span className="font-medium">{position.status}</span>
+                                  </div>
+                                  <div className="flex justify-between">
+                                    <span>Price Range:</span>
+                                    <span className="font-medium">
+                                      ${formatNumber(position.lowerPrice)} - ${formatNumber(position.upperPrice)}
+                                    </span>
+                                  </div>
+                                  {position.claimableRewards > 0 && (
+                                    <div className="flex justify-between text-emerald-600">
+                                      <span>Rewards:</span>
+                                      <span className="font-medium">${formatNumber(position.claimableRewards)}</span>
+                                    </div>
+                                  )}
+                                  {(position.feeAmountXUsd > 0 || position.feeAmountYUsd > 0) && (
+                                    <div className="flex justify-between text-blue-600">
+                                      <span>Fees:</span>
+                                      <span className="font-medium">
+                                        ${formatNumber(position.feeAmountXUsd + position.feeAmountYUsd)}
+                                      </span>
+                                    </div>
+                                  )}
+                                  <div className="text-xs text-zinc-500 mt-1">
+                                    <div>Position ID: {position.objectId.substring(0, 10)}...</div>
+                                    <div>Pool ID: {position.poolId.substring(0, 10)}...</div>
+                                  </div>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
                         </div>
                       ) : (
                         <div className="text-center py-4 text-sm text-zinc-500">
@@ -659,12 +733,12 @@ export default function ControlPage() {
 
               {/* Scallop Protocol Block */}
               <div className="mb-4 border border-zinc-200 dark:border-zinc-700 rounded-lg overflow-hidden">
-                <div className="flex flex-row items-center justify-between p-3 bg-zinc-50 dark:bg-zinc-900">
+                <div 
+                  onClick={() => setShowScallop(!showScallop)}
+                  className="flex flex-row items-center justify-between p-3 bg-zinc-50 dark:bg-zinc-900 cursor-pointer hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
+                >
                   <div className="flex-1 flex justify-between items-center">
-                    <button
-                      onClick={() => setShowScallop(!showScallop)}
-                      className="flex items-center gap-2 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors rounded px-2 py-1"
-                    >
+                    <div className="flex items-center gap-2">
                       <Image
                         src="https://app.scallop.io/images/logo-192.png"
                         alt="Scallop"
@@ -675,23 +749,18 @@ export default function ControlPage() {
                       <span className="font-medium text-zinc-900 dark:text-zinc-100">
                         Scallop
                       </span>
-                    </button>
+                    </div>
                     {scallopData && scallopData.lendings && scallopData.lendings.length > 0 && (
                       <span className="font-medium text-zinc-900 dark:text-zinc-100">
                         ${formatNumber(scallopData.lendings.reduce((sum: number, lending: any) => sum + (lending.suppliedValue || 0), 0))}
                       </span>
                     )}
                   </div>
-                  <button
-                    onClick={() => setShowScallop(!showScallop)}
-                    className="ml-2 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors rounded p-1"
-                  >
-                    {showScallop ? (
-                      <ChevronDown className="h-4 w-4 text-zinc-500" />
-                    ) : (
-                      <ChevronRight className="h-4 w-4 text-zinc-500" />
-                    )}
-                  </button>
+                  {showScallop ? (
+                    <ChevronDown className="h-4 w-4 text-zinc-500" />
+                  ) : (
+                    <ChevronRight className="h-4 w-4 text-zinc-500" />
+                  )}
                 </div>
                 
                 {showScallop && (

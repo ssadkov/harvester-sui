@@ -28,6 +28,8 @@ export interface ProcessedPool {
   protocol: string;
   type: string;
   tvl: number;
+  volume_24: string;
+  fees_24: string;
 }
 
 export function processPoolsData(data: PoolsResponse): ProcessedPool[] {
@@ -54,7 +56,9 @@ export function processPoolsData(data: PoolsResponse): ProcessedPool[] {
         totalApr,
         protocol,
         type: pool.type,
-        tvl: typeof pool.tvl === 'string' ? parseFloat(pool.tvl) : pool.tvl
+        tvl: typeof pool.tvl === 'string' ? parseFloat(pool.tvl) : pool.tvl,
+        volume_24: pool.volume_24,
+        fees_24: pool.fees_24
       });
     });
   });
