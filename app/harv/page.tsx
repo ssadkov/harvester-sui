@@ -28,6 +28,7 @@ import { WalletView } from '../components/chat/WalletView';
 import { TokenView } from '../components/chat/TokenView';
 import { createClaimAllTx, initMomentumSDK } from '@/app/utils/momentum-utils';
 import { createClaimAllRewardsTx, initNaviSDK, getAvailableRewards } from '@/app/utils/navi-utils';
+import { viewPoolsTool } from '@/app/tools/pool-tools';
 
 // Define Momentum position interface
 interface MomentumPosition {
@@ -694,7 +695,7 @@ const Home = () => {
       event.preventDefault = () => {};
       
       // Устанавливаем значение input и сразу отправляем
-      handleInputChange({ target: { value: 'Show USD pools' } } as any);
+      handleInputChange({ target: { value: 'usd' } } as any);
       handleSubmit(event);
     } catch (error) {
       console.error('Error fetching pools:', error);
@@ -1512,9 +1513,15 @@ const Home = () => {
                     onClick={() => {
                       setShowActionButtons(false);
                       if (action.action === 'show-usd-pools') {
-                        append({
-                          role: 'user',
-                          content: 'Show USD pools'
+                        viewPoolsTool.execute({ token: 'usd' }).then(result => {
+                          append({
+                            role: 'user',
+                            content: 'Show USD pools'
+                          });
+                          append({
+                            role: 'assistant',
+                            content: JSON.stringify(result)
+                          });
                         });
                       } else if (action.action === 'show-assets-pie-chart') {
                         append({
