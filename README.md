@@ -40,3 +40,21 @@ To learn more about Vercel AI SDK or Next.js take a look at the following resour
 - [Vercel AI SDK docs](https://sdk.vercel.ai/docs)
 - [Vercel AI Playground](https://play.vercel.ai)
 - [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
+
+
+| 🏦 Name            | 📖 Read | 💸 Supply | 💰 Withdraw  | 🎁 Rewards|
+|--------------------|---------|-----------|--------------|----------|
+| **SUI Staking**    |   ✅    |   ❌      |   ❌         |   ❌     |
+| **Scallop**        |   ✅    |   ❌      |   ❌         |   ❌     |
+| **Cetus**          |   ✅    |   ❌      |   ❌         |   ❌     |
+| **Navi Protocol**  |   ✅    |   ❌      |   ❌         |   ✅     |
+| **Aftermath**      |   ✅    |   ❌      |   ❌         |   ❌     |
+| **Volo**           |   ✅    |   ❌      |   ❌         |   ❌     |
+| **Turbos Finance** |   ✅    |   ❌      |   ❌         |   ❌     |
+| **Haedal Protocol**|   ✅    |   ❌      |   ❌         |   ❌     |
+| **Suilend**        |   ✅    |   ❌      |   ❌         |   ❌     |
+| **Ika**            |   ✅    |   ❌      |   ❌         |   ❌     |
+| **Bluefin**        |   ✅    |   ❌      |   ❌         |   ❌     |
+| **Momentum**       |   ✅    |   ❌      |   ❌         |   ✅     |
+
+
