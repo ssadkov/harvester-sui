@@ -50,6 +50,30 @@ interface TokenWithBalance {
   usdPrice?: string;
 }
 
+// Интерфейсы для Finkeeper
+interface FinkeeperPlatform {
+  platformName: string;
+  analysisPlatformId: number;
+  platformLogo: string;
+  platformColor: string;
+  currencyAmount: string;
+  isSupportInvest: boolean;
+  bonusTag: number;
+  platformUrl: string;
+  investmentCount: number;
+}
+
+interface FinkeeperResponse {
+  code: number;
+  msg: string;
+  data: {
+    walletIdPlatformList: [{
+      platformList: FinkeeperPlatform[];
+      totalAssets: string;
+    }];
+  };
+}
+
 // Функция для форматирования чисел
 const formatNumber = (num: number | string, digits = 2) => {
   const numValue = typeof num === 'string' ? parseFloat(num) : num;
@@ -219,6 +243,11 @@ export default function ControlPage() {
   const [isLoadingPositions, setIsLoadingPositions] = useState(false);
   const [showMomentum, setShowMomentum] = useState(false);
   const [showScallop, setShowScallop] = useState(false);
+  
+  // Состояния для Finkeeper
+  const [finkeeperData, setFinkeeperData] = useState<FinkeeperResponse | null>(null);
+  const [isLoadingFinkeeper, setIsLoadingFinkeeper] = useState(false);
+  const [showFinkeeperProtocols, setShowFinkeeperProtocols] = useState<Record<number, boolean>>({});
 
   // Преобразуем poolsData в массив пулов
   const filteredPools = poolsData ? Object.entries(poolsData).flatMap(([protocol, pools]) =>
@@ -365,6 +394,52 @@ export default function ControlPage() {
   useEffect(() => {
     if (wallet.connected && wallet.account) {
       fetchUserPositions();
+    }
+  }, [wallet.connected, wallet.account]);
+
+  // Функция для загрузки данных Finkeeper
+  const fetchFinkeeperData = async () => {
+    if (!wallet.connected || !wallet.account) return;
+    
+    setIsLoadingFinkeeper(true);
+    try {
+      const response = await fetch('https://finkeeper-okx.vercel.app/api/defi/positions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          walletAddressList: [{
+            chainId: 784,
+            walletAddress: wallet.account.address
+          }]
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const data = await response.json();
+      setFinkeeperData(data);
+
+      // Инициализируем состояние видимости для каждого протокола
+      const initialVisibility: Record<number, boolean> = {};
+      data.data.walletIdPlatformList[0].platformList.forEach((platform: FinkeeperPlatform) => {
+        initialVisibility[platform.analysisPlatformId] = false;
+      });
+      setShowFinkeeperProtocols(initialVisibility);
+    } catch (error) {
+      console.error('Error fetching Finkeeper data:', error);
+    } finally {
+      setIsLoadingFinkeeper(false);
+    }
+  };
+
+  // Загружаем данные Finkeeper при подключении кошелька
+  useEffect(() => {
+    if (wallet.connected && wallet.account) {
+      fetchFinkeeperData();
     }
   }, [wallet.connected, wallet.account]);
 
@@ -593,213 +668,240 @@ export default function ControlPage() {
                 )}
               </div>
 
-              {/* Momentum Protocol Block */}
-              <div className="mb-4 border border-zinc-200 dark:border-zinc-700 rounded-lg overflow-hidden">
-                <div 
-                  onClick={() => setShowMomentum(!showMomentum)}
-                  className="flex flex-row items-center justify-between p-3 bg-zinc-50 dark:bg-zinc-900 cursor-pointer hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
-                >
-                  <div className="flex-1 flex justify-between items-center">
-                    <div className="flex items-center gap-2">
-                      <Image
-                        src="https://app.mmt.finance/assets/images/momentum-logo-sq.svg"
-                        alt="Momentum"
-                        width={16}
-                        height={16}
-                        className="rounded"
-                      />
-                      <span className="font-medium text-zinc-900 dark:text-zinc-100">
-                        Momentum
-                      </span>
-                    </div>
-                    {momentumData && momentumData.length > 0 && (
-                      <span className="font-medium text-zinc-900 dark:text-zinc-100">
-                        ${formatNumber(momentumData.reduce((sum: number, pos: any) => sum + (pos.amount || 0), 0))}
-                      </span>
-                    )}
-                  </div>
-                  {showMomentum ? (
-                    <ChevronDown className="h-4 w-4 text-zinc-500" />
-                  ) : (
-                    <ChevronRight className="h-4 w-4 text-zinc-500" />
-                  )}
-                </div>
-                
-                {showMomentum && (
-                  <div className="p-3">
-                    {isLoadingPositions ? (
-                      <div className="flex justify-center py-4">
-                        <span className="text-sm text-zinc-500">Loading positions...</span>
-                      </div>
-                    ) : wallet.connected ? (
-                      momentumData && momentumData.length > 0 ? (
-                        <div className="space-y-4">
-                          {/* Total Rewards and Claim Button */}
-                          {console.log('Momentum data:', momentumData)}
-                          {console.log('Has rewards:', momentumData.some((pos: any) => pos.claimableRewards > 0))}
-                          {momentumData.some((pos: any) => pos.claimableRewards > 0) && (
-                            <div className="flex items-center justify-between p-2 rounded-lg bg-emerald-50 dark:bg-emerald-900/20">
-                              <div className="flex items-center gap-2">
-                                <Gift className="h-4 w-4 text-emerald-500" />
-                                <span className="text-sm text-emerald-600 dark:text-emerald-400">
-                                  Total Rewards: ${formatNumber(momentumData.reduce((sum: number, pos: any) => sum + (pos.claimableRewards || 0), 0))}
-                                </span>
+              {/* Protocol blocks */}
+              {[
+                // Momentum block
+                momentumData && momentumData.length > 0 && {
+                  id: 'momentum',
+                  name: 'Momentum',
+                  logo: 'https://app.mmt.finance/assets/images/momentum-logo-sq.svg',
+                  value: momentumData.reduce((sum: number, pos: any) => sum + (pos.amount || 0), 0),
+                  show: showMomentum,
+                  setShow: setShowMomentum,
+                  content: (
+                    <div className="p-3">
+                      {isLoadingPositions ? (
+                        <div className="flex justify-center py-4">
+                          <span className="text-sm text-zinc-500">Loading positions...</span>
+                        </div>
+                      ) : wallet.connected ? (
+                        momentumData && momentumData.length > 0 ? (
+                          <div className="space-y-4">
+                            {/* Total Rewards and Claim Button */}
+                            {console.log('Momentum data:', momentumData)}
+                            {console.log('Has rewards:', momentumData.some((pos: any) => pos.claimableRewards > 0))}
+                            {momentumData.some((pos: any) => pos.claimableRewards > 0) && (
+                              <div className="flex items-center justify-between p-2 rounded-lg bg-emerald-50 dark:bg-emerald-900/20">
+                                <div className="flex items-center gap-2">
+                                  <Gift className="h-4 w-4 text-emerald-500" />
+                                  <span className="text-sm text-emerald-600 dark:text-emerald-400">
+                                    Total Rewards: ${formatNumber(momentumData.reduce((sum: number, pos: any) => sum + (pos.claimableRewards || 0), 0))}
+                                  </span>
+                                </div>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  className="text-emerald-600 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800 hover:bg-emerald-100 dark:hover:bg-emerald-800/50"
+                                  onClick={async () => {
+                                    if (!wallet.account) return;
+                                    try {
+                                      const sdk = initMomentumSDK();
+                                      const tx = await createClaimAllTx(sdk, wallet.account.address);
+                                      await wallet.signAndExecuteTransactionBlock({
+                                        transactionBlock: tx as any,
+                                      });
+                                      // Обновляем данные после успешной транзакции
+                                      fetchUserPositions();
+                                    } catch (error) {
+                                      console.error('Error claiming rewards:', error);
+                                    }
+                                  }}
+                                >
+                                  Claim All
+                                </Button>
                               </div>
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                className="text-emerald-600 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800 hover:bg-emerald-100 dark:hover:bg-emerald-800/50"
-                                onClick={async () => {
-                                  if (!wallet.account) return;
-                                  try {
-                                    const sdk = initMomentumSDK();
-                                    const tx = await createClaimAllTx(sdk, wallet.account.address);
-                                    await wallet.signAndExecuteTransactionBlock({
-                                      transactionBlock: tx as any,
-                                    });
-                                    // Обновляем данные после успешной транзакции
-                                    fetchUserPositions();
-                                  } catch (error) {
-                                    console.error('Error claiming rewards:', error);
-                                  }
-                                }}
-                              >
-                                Claim All
-                              </Button>
-                            </div>
-                          )}
+                            )}
 
-                          {/* Positions List */}
-                          <div className="space-y-2">
-                            {momentumData.map((position: any, index: number) => (
-                              <div key={index} className="p-3 rounded-lg bg-zinc-50 dark:bg-zinc-800/50">
-                                <div className="text-sm space-y-2">
-                                  <div className="flex justify-between items-center">
-                                    <span className="font-medium">Pool:</span>
-                                    <span className="text-zinc-900 dark:text-zinc-100">
-                                      {position.token0Symbol}/{position.token1Symbol}
-                                    </span>
-                                  </div>
-                                  <div className="flex justify-between">
-                                    <span>Value:</span>
-                                    <span className="font-medium">${formatNumber(position.amount)}</span>
-                                  </div>
-                                  <div className="flex justify-between">
-                                    <span>Status:</span>
-                                    <span className="font-medium">{position.status}</span>
-                                  </div>
-                                  <div className="flex justify-between">
-                                    <span>Price Range:</span>
-                                    <span className="font-medium">
-                                      ${formatNumber(position.lowerPrice)} - ${formatNumber(position.upperPrice)}
-                                    </span>
-                                  </div>
-                                  {position.claimableRewards > 0 && (
-                                    <div className="flex justify-between text-emerald-600">
-                                      <span>Rewards:</span>
-                                      <span className="font-medium">${formatNumber(position.claimableRewards)}</span>
-                                    </div>
-                                  )}
-                                  {(position.feeAmountXUsd > 0 || position.feeAmountYUsd > 0) && (
-                                    <div className="flex justify-between text-blue-600">
-                                      <span>Fees:</span>
-                                      <span className="font-medium">
-                                        ${formatNumber(position.feeAmountXUsd + position.feeAmountYUsd)}
+                            {/* Positions List */}
+                            <div className="space-y-2">
+                              {momentumData.map((position: any, index: number) => (
+                                <div key={index} className="p-3 rounded-lg bg-zinc-50 dark:bg-zinc-800/50">
+                                  <div className="text-sm space-y-2">
+                                    <div className="flex justify-between items-center">
+                                      <span className="font-medium">Pool:</span>
+                                      <span className="text-zinc-900 dark:text-zinc-100">
+                                        {position.token0Symbol}/{position.token1Symbol}
                                       </span>
                                     </div>
-                                  )}
-                                  <div className="text-xs text-zinc-500 mt-1">
-                                    <div>Position ID: {position.objectId.substring(0, 10)}...</div>
-                                    <div>Pool ID: {position.poolId.substring(0, 10)}...</div>
+                                    <div className="flex justify-between">
+                                      <span>Value:</span>
+                                      <span className="font-medium">${formatNumber(position.amount)}</span>
+                                    </div>
+                                    <div className="flex justify-between">
+                                      <span>Status:</span>
+                                      <span className="font-medium">{position.status}</span>
+                                    </div>
+                                    <div className="flex justify-between">
+                                      <span>Price Range:</span>
+                                      <span className="font-medium">
+                                        ${formatNumber(position.lowerPrice)} - ${formatNumber(position.upperPrice)}
+                                      </span>
+                                    </div>
+                                    {position.claimableRewards > 0 && (
+                                      <div className="flex justify-between text-emerald-600">
+                                        <span>Rewards:</span>
+                                        <span className="font-medium">${formatNumber(position.claimableRewards)}</span>
+                                      </div>
+                                    )}
+                                    {(position.feeAmountXUsd > 0 || position.feeAmountYUsd > 0) && (
+                                      <div className="flex justify-between text-blue-600">
+                                        <span>Fees:</span>
+                                        <span className="font-medium">
+                                          ${formatNumber(position.feeAmountXUsd + position.feeAmountYUsd)}
+                                        </span>
+                                      </div>
+                                    )}
+                                    <div className="text-xs text-zinc-500 mt-1">
+                                      <div>Position ID: {position.objectId.substring(0, 10)}...</div>
+                                      <div>Pool ID: {position.poolId.substring(0, 10)}...</div>
+                                    </div>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="text-center py-4 text-sm text-zinc-500">
+                            No active positions
+                          </div>
+                        )
+                      ) : (
+                        <div className="text-center py-4 text-sm text-zinc-500">
+                          Connect wallet to view positions
+                        </div>
+                      )}
+                    </div>
+                  )
+                },
+                // Scallop block
+                scallopData && scallopData.lendings && scallopData.lendings.length > 0 && {
+                  id: 'scallop',
+                  name: 'Scallop',
+                  logo: 'https://app.scallop.io/images/logo-192.png',
+                  value: scallopData.lendings.reduce((sum: number, lending: any) => sum + (lending.suppliedValue || 0), 0),
+                  show: showScallop,
+                  setShow: setShowScallop,
+                  content: (
+                    <div className="p-3">
+                      {isLoadingPositions ? (
+                        <div className="flex justify-center py-4">
+                          <span className="text-sm text-zinc-500">Loading positions...</span>
+                        </div>
+                      ) : wallet.connected ? (
+                        scallopData && scallopData.lendings && scallopData.lendings.length > 0 ? (
+                          <div className="space-y-2">
+                            {scallopData.lendings.map((lending: any, index: number) => (
+                              <div key={index} className="p-2 rounded-lg bg-zinc-50 dark:bg-zinc-800/50">
+                                <div className="text-sm">
+                                  <div className="flex justify-between">
+                                    <span>{lending.symbol}:</span>
+                                    <span className="font-medium">${formatNumber(lending.suppliedValue)}</span>
+                                  </div>
+                                  <div className="flex justify-between text-green-600">
+                                    <span>APY:</span>
+                                    <span className="font-medium">{formatNumber(lending.supplyApy)}%</span>
                                   </div>
                                 </div>
                               </div>
                             ))}
                           </div>
-                        </div>
+                        ) : (
+                          <div className="text-center py-4 text-sm text-zinc-500">
+                            No active positions
+                          </div>
+                        )
                       ) : (
                         <div className="text-center py-4 text-sm text-zinc-500">
-                          No active positions
+                          Connect wallet to view positions
                         </div>
-                      )
-                    ) : (
-                      <div className="text-center py-4 text-sm text-zinc-500">
-                        Connect wallet to view positions
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
-
-              {/* Scallop Protocol Block */}
-              <div className="mb-4 border border-zinc-200 dark:border-zinc-700 rounded-lg overflow-hidden">
-                <div 
-                  onClick={() => setShowScallop(!showScallop)}
-                  className="flex flex-row items-center justify-between p-3 bg-zinc-50 dark:bg-zinc-900 cursor-pointer hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
-                >
-                  <div className="flex-1 flex justify-between items-center">
-                    <div className="flex items-center gap-2">
-                      <Image
-                        src="https://app.scallop.io/images/logo-192.png"
-                        alt="Scallop"
-                        width={16}
-                        height={16}
-                        className="rounded"
-                      />
-                      <span className="font-medium text-zinc-900 dark:text-zinc-100">
-                        Scallop
-                      </span>
+                      )}
                     </div>
-                    {scallopData && scallopData.lendings && scallopData.lendings.length > 0 && (
-                      <span className="font-medium text-zinc-900 dark:text-zinc-100">
-                        ${formatNumber(scallopData.lendings.reduce((sum: number, lending: any) => sum + (lending.suppliedValue || 0), 0))}
-                      </span>
-                    )}
-                  </div>
-                  {showScallop ? (
-                    <ChevronDown className="h-4 w-4 text-zinc-500" />
-                  ) : (
-                    <ChevronRight className="h-4 w-4 text-zinc-500" />
-                  )}
-                </div>
-                
-                {showScallop && (
-                  <div className="p-3">
-                    {isLoadingPositions ? (
-                      <div className="flex justify-center py-4">
-                        <span className="text-sm text-zinc-500">Loading positions...</span>
-                      </div>
-                    ) : wallet.connected ? (
-                      scallopData && scallopData.lendings && scallopData.lendings.length > 0 ? (
-                        <div className="space-y-2">
-                          {scallopData.lendings.map((lending: any, index: number) => (
-                            <div key={index} className="p-2 rounded-lg bg-zinc-50 dark:bg-zinc-800/50">
-                              <div className="text-sm">
-                                <div className="flex justify-between">
-                                  <span>{lending.symbol}:</span>
-                                  <span className="font-medium">${formatNumber(lending.suppliedValue)}</span>
-                                </div>
-                                <div className="flex justify-between text-green-600">
-                                  <span>APY:</span>
-                                  <span className="font-medium">{formatNumber(lending.supplyApy)}%</span>
-                                </div>
-                              </div>
+                  )
+                },
+                // Finkeeper blocks
+                ...(finkeeperData?.data.walletIdPlatformList[0].platformList
+                  .filter(platform => !['Scallop', 'Momentum'].includes(platform.platformName))
+                  .map(platform => ({
+                    id: platform.analysisPlatformId.toString(),
+                    name: platform.platformName,
+                    logo: platform.platformLogo,
+                    value: parseFloat(platform.currencyAmount),
+                    show: showFinkeeperProtocols[platform.analysisPlatformId],
+                    setShow: (show: boolean) => setShowFinkeeperProtocols(prev => ({
+                      ...prev,
+                      [platform.analysisPlatformId]: show
+                    })),
+                    content: (
+                      <div className="p-3">
+                        {isLoadingFinkeeper ? (
+                          <div className="flex justify-center py-4">
+                            <span className="text-sm text-zinc-500">Loading positions...</span>
+                          </div>
+                        ) : wallet.connected ? (
+                          parseFloat(platform.currencyAmount) > 0 ? (
+                            <div className="text-center py-4 text-sm text-zinc-500">
+                              Loading protocol details...
                             </div>
-                          ))}
-                        </div>
-                      ) : (
-                        <div className="text-center py-4 text-sm text-zinc-500">
-                          No active positions
-                        </div>
-                      )
-                    ) : (
-                      <div className="text-center py-4 text-sm text-zinc-500">
-                        Connect wallet to view positions
+                          ) : (
+                            <div className="text-center py-4 text-sm text-zinc-500">
+                              No active positions
+                            </div>
+                          )
+                        ) : (
+                          <div className="text-center py-4 text-sm text-zinc-500">
+                            Connect wallet to view positions
+                          </div>
+                        )}
                       </div>
-                    )}
+                    )
+                  })) || [])
+              ]
+                .filter(Boolean)
+                .sort((a, b) => b.value - a.value)
+                .map(protocol => (
+                  <div key={protocol.id} className="mb-4 border border-zinc-200 dark:border-zinc-700 rounded-lg overflow-hidden">
+                    <div 
+                      onClick={() => protocol.setShow(!protocol.show)}
+                      className="flex flex-row items-center justify-between p-3 bg-zinc-50 dark:bg-zinc-900 cursor-pointer hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
+                    >
+                      <div className="flex-1 flex justify-between items-center">
+                        <div className="flex items-center gap-2">
+                          <Image
+                            src={protocol.logo}
+                            alt={protocol.name}
+                            width={16}
+                            height={16}
+                            className="rounded"
+                          />
+                          <span className="font-medium text-zinc-900 dark:text-zinc-100">
+                            {protocol.name}
+                          </span>
+                        </div>
+                        {protocol.value > 0 && (
+                          <span className="font-medium text-zinc-900 dark:text-zinc-100">
+                            ${formatNumber(protocol.value)}
+                          </span>
+                        )}
+                      </div>
+                      {protocol.show ? (
+                        <ChevronDown className="h-4 w-4 text-zinc-500" />
+                      ) : (
+                        <ChevronRight className="h-4 w-4 text-zinc-500" />
+                      )}
+                    </div>
+                    {protocol.show && protocol.content}
                   </div>
-                )}
-              </div>
+                ))}
 
             </div>
           </motion.div>
