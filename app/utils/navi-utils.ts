@@ -1,12 +1,31 @@
 import { Transaction } from '@mysten/sui/transactions';
 import { claimAllRewardsPTB } from 'navi-sdk';
 import { SuiClient } from '@mysten/sui/client';
+import { pool, Pool, PoolConfig } from '@/app/types';
 
 // Инициализация SDK
 export const initNaviSDK = () => {
   return new SuiClient({
     url: 'https://sui-mainnet.public.blastapi.io'
   });
+};
+
+// Получение PoolConfig по символу токена
+export const getPoolConfig = (symbol: string): PoolConfig | null => {
+  // Приводим символ к верхнему регистру для поиска
+  const normalizedSymbol = symbol.toUpperCase();
+  
+  // Ищем ключ в объекте pool, игнорируя регистр
+  const poolKey = Object.keys(pool).find(
+    key => key.toUpperCase() === normalizedSymbol
+  ) as keyof Pool | undefined;
+
+  if (!poolKey) {
+    console.error(`Pool not found for token ${symbol}`);
+    return null;
+  }
+
+  return pool[poolKey];
 };
 
 // Создание транзакции для сбора наград

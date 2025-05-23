@@ -4,6 +4,7 @@ import { ProcessedPool } from '@/utils/poolUtils';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useState } from 'react';
+import { getPoolConfig } from '@/app/utils/navi-utils';
 
 interface PoolsViewProps {
   message: string;
@@ -191,13 +192,16 @@ export function PoolsView({ message, pools }: PoolsViewProps) {
                   {pool.protocol.toLowerCase() === 'navi' && (
                     <button
                       onClick={() => {
+                        const poolConfig = getPoolConfig(pool.tokens[0]);
+                        console.log('Pool Config:', poolConfig);
                         alert(JSON.stringify({
                           pool: pool.tokens.join(' / '),
                           apr: (pool.totalApr * 100).toFixed(2) + '%',
                           type: pool.type,
                           tvl: pool.tvl,
                           volume24h: pool.volume_24,
-                          fees24h: pool.fees_24
+                          fees24h: pool.fees_24,
+                          poolConfig
                         }, null, 2));
                       }}
                       className="ml-2 px-2 py-1 text-xs bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors"
