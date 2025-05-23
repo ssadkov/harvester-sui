@@ -7,6 +7,7 @@ interface ProtocolBalance {
   protocol: string;
   value: number;
   icon?: string;
+  color?: string;
 }
 
 interface ProtocolPieChartProps {
@@ -17,8 +18,8 @@ export function ProtocolPieChart({ protocolBalances }: ProtocolPieChartProps) {
   // Фильтруем протоколы с нулевым балансом
   const activeProtocols = protocolBalances.filter(p => p.value > 0);
   
-  // Цвета для секторов
-  const protocolColors = {
+  // Цвета по умолчанию для известных протоколов
+  const defaultColors = {
     'Wallet': 'hsl(221.2, 83.2%, 53.3%)', // синий
     'Scallop': 'hsl(142.1, 76.2%, 36.3%)', // зеленый
     'Momentum': 'hsl(262.1, 83.3%, 57.8%)', // фиолетовый
@@ -28,7 +29,7 @@ export function ProtocolPieChart({ protocolBalances }: ProtocolPieChartProps) {
   const chartData = activeProtocols.map(protocol => ({
     name: protocol.protocol,
     value: protocol.value,
-    fill: protocolColors[protocol.protocol as keyof typeof protocolColors] || 'hsl(0, 0%, 50%)',
+    fill: protocol.color || defaultColors[protocol.protocol as keyof typeof defaultColors] || 'hsl(0, 0%, 50%)',
   }));
 
   const CustomTooltip = ({ active, payload }: any) => {

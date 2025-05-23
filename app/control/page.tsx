@@ -16,6 +16,25 @@ import { createClaimAllRewardsTx, initNaviSDK, getAvailableRewards } from '@/app
 import { PieChartAssets } from '@/components/PieChartAssets';
 import { ProtocolPieChart } from '@/components/ProtocolPieChart';
 
+// Массив цветов для графиков протоколов
+const protocolColors = [
+  'hsl(262.1, 83.3%, 57.8%)', // Momentum - фиолетовый
+  'hsl(142.1, 76.2%, 36.3%)', // Scallop - зеленый
+  'hsl(221.2, 83.2%, 53.3%)', // синий
+  'hsl(32.1, 94.6%, 44.3%)',  // оранжевый
+  'hsl(0, 84.2%, 60.2%)',     // красный
+  'hsl(174.7, 77.8%, 51.8%)', // бирюзовый
+  'hsl(291.1, 64.1%, 42.2%)', // фиолетовый
+  'hsl(48.2, 89.1%, 53.1%)',  // желтый
+  'hsl(152.2, 76.2%, 36.3%)', // мятный
+  'hsl(340.5, 82.1%, 52.2%)', // розовый
+  'hsl(207.4, 90.2%, 54.1%)', // голубой
+  'hsl(120.0, 76.2%, 36.3%)', // зеленый
+  'hsl(39.1, 89.1%, 53.1%)',  // оранжевый
+  'hsl(0.0, 84.2%, 60.2%)',   // красный
+  'hsl(174.7, 77.8%, 51.8%)', // бирюзовый
+];
+
 // Интерфейсы для данных
 interface Pool {
   pool_id: string | null;
@@ -54,6 +73,14 @@ interface TokenWithBalance {
 }
 
 // Интерфейсы для Finkeeper
+interface FinkeeperNetworkBalance {
+  network: string;
+  networkLogo: string;
+  chainId: number;
+  currencyAmount: string;
+  investmentCount: number;
+}
+
 interface FinkeeperPlatform {
   platformName: string;
   analysisPlatformId: number;
@@ -63,47 +90,68 @@ interface FinkeeperPlatform {
   isSupportInvest: boolean;
   bonusTag: number;
   platformUrl: string;
+  networkBalanceVoList: FinkeeperNetworkBalance[];
   investmentCount: number;
+}
+
+interface FinkeeperWalletPlatform {
+  platformList: FinkeeperPlatform[];
+  totalAssets: string;
 }
 
 interface FinkeeperResponse {
   code: number;
   msg: string;
   data: {
-    walletIdPlatformList: [{
-      platformList: FinkeeperPlatform[];
-      totalAssets: string;
-    }];
+    walletIdPlatformList: FinkeeperWalletPlatform[];
   };
 }
 
-interface FinkeeperToken {
+// Интерфейсы для детальной информации Finkeeper
+interface FinkeeperTokenInfo {
   tokenSymbol: string;
   tokenLogo: string;
   coinAmount: string;
   currencyAmount: string;
+  tokenPrecision: number;
+  tokenAddress: string;
+  network: string;
+}
+
+interface FinkeeperRewardInfo {
+  baseDefiTokenInfos: FinkeeperTokenInfo[];
+  rewardType: number;
 }
 
 interface FinkeeperInvestment {
   investmentName: string;
-  investName: string;
+  investmentKey: string;
   investType: number;
+  investName: string;
+  assetsTokenList: FinkeeperTokenInfo[];
+  rewardDefiTokenInfo: FinkeeperRewardInfo[];
   totalValue: string;
-  assetsTokenList: FinkeeperToken[];
-  rewardDefiTokenInfo: [{
-    baseDefiTokenInfos: FinkeeperToken[];
-  }];
+}
+
+interface FinkeeperNetworkHold {
+  network: string;
+  chainId: number;
+  totalAssert: string;
+  investTokenBalanceVoList: FinkeeperInvestment[];
+  availableRewards: any[];
+  airDropRewardInfo: any[];
+}
+
+interface FinkeeperPlatformDetail {
+  networkHoldVoList: FinkeeperNetworkHold[];
+  accountId: string;
 }
 
 interface FinkeeperDetailResponse {
   code: number;
   msg: string;
   data: {
-    walletIdPlatformDetailList: [{
-      networkHoldVoList: [{
-        investTokenBalanceVoList: FinkeeperInvestment[];
-      }];
-    }];
+    walletIdPlatformDetailList: FinkeeperPlatformDetail[];
   };
 }
 
@@ -426,9 +474,7 @@ export default function ControlPage() {
       // Проверяем наличие позиций и устанавливаем начальное состояние блоков
       const hasMomentumPositions = Array.isArray(momentumResult.raw) && momentumResult.raw.length > 0;
       const hasScallopPositions = scallopResult.raw && scallopResult.raw.lendings && scallopResult.raw.lendings.length > 0;
-      const hasFinkeeperPositions = finkeeperData?.data?.walletIdPlatformList?.[0]?.platformList?.[0]?.platformList?.some(
-        platform => !['Scallop', 'Momentum'].includes(platform.platformName) && parseFloat(platform.currencyAmount || '0') > 0
-      );
+      const hasFinkeeperPositions = finkeeperData?.data?.walletIdPlatformList?.[0]?.platformList?.[0]?.currencyAmount !== undefined;
       
       // Если нет позиций ни в одном протоколе, показываем только Wallet
       if (!hasMomentumPositions && !hasScallopPositions && !hasFinkeeperPositions) {
@@ -479,11 +525,14 @@ export default function ControlPage() {
       });
 
       if (!response.ok) {
+        console.error('Finkeeper API error:', response.status, response.statusText);
+        const errorText = await response.text();
+        console.error('Error response:', errorText);
         throw new Error(`HTTP error! status: ${response.status}`);
       }
 
-      const data = await response.json();
-      console.log('Finkeeper response:', data);
+      const data = await response.json() as FinkeeperResponse;
+      console.log('Raw Finkeeper response:', data);
 
       if (data.code !== 0) {
         console.error('Finkeeper API error:', data.msg);
@@ -491,26 +540,44 @@ export default function ControlPage() {
         return;
       }
 
-      if (!data.data?.walletIdPlatformList?.[0]?.platformList) {
+      const walletPlatforms = data.data?.walletIdPlatformList?.[0];
+      if (!walletPlatforms?.platformList) {
         console.log('No Finkeeper data available');
         setFinkeeperData(null);
         return;
       }
 
-      console.log('Setting Finkeeper data:', data);
-      setFinkeeperData(data);
+      // Фильтруем и сортируем платформы
+      const filteredPlatforms = walletPlatforms.platformList
+        .filter((platform: FinkeeperPlatform) => {
+          const amount = parseFloat(platform.currencyAmount || '0');
+          console.log(`Platform ${platform.platformName}: amount = ${amount}`);
+          return !['Scallop', 'Momentum'].includes(platform.platformName) && amount > 0;
+        })
+        .sort((a: FinkeeperPlatform, b: FinkeeperPlatform) => 
+          parseFloat(b.currencyAmount || '0') - parseFloat(a.currencyAmount || '0')
+        );
+
+      console.log('Filtered platforms:', filteredPlatforms);
+      
+      // Обновляем данные с отфильтрованными платформами
+      const updatedData: FinkeeperResponse = {
+        ...data,
+        data: {
+          ...data.data,
+          walletIdPlatformList: [{
+            ...walletPlatforms,
+            platformList: filteredPlatforms
+          }]
+        }
+      };
+      
+      setFinkeeperData(updatedData);
     } catch (error) {
       console.error('Error fetching Finkeeper data:', error);
       setFinkeeperData(null);
     }
   };
-
-  // Загружаем данные Finkeeper при подключении кошелька
-  useEffect(() => {
-    if (wallet.connected && wallet.account) {
-      fetchFinkeeperData();
-    }
-  }, [wallet.connected, wallet.account]);
 
   // Функция для загрузки детальных данных
   const fetchFinkeeperDetail = async (platformId: number, address: string) => {
@@ -519,7 +586,10 @@ export default function ControlPage() {
     setFinkeeperErrors(prev => ({ ...prev, [platformId]: '' }));
     
     try {
-      const response = await fetch(`https://finkeeper-okx.vercel.app/api/defi/positions?platformId=${platformId}&chainId=784&walletAddress=${address}`, {
+      const url = `https://finkeeper-okx.vercel.app/api/defi/positions?platformId=${platformId}&chainId=784&walletAddress=${address}`;
+      console.log('Fetching from URL:', url);
+      
+      const response = await fetch(url, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
@@ -531,10 +601,44 @@ export default function ControlPage() {
       }
       
       const data = await response.json();
-      console.log('Finkeeper detail response for platform', platformId, ':', data);
+      console.log('Raw Finkeeper detail response for platform', platformId, ':', data);
+      
+      if (data.code !== 0) {
+        throw new Error(`API error: ${data.msg || data.error_message || 'Unknown error'}`);
+      }
+
+      // Проверяем структуру данных
+      const platformDetail = data.data?.walletIdPlatformDetailList?.[0];
+      if (!platformDetail) {
+        console.log('No platform detail data found');
+        setFinkeeperDetailData(prev => ({ ...prev, [platformId]: data }));
+        return;
+      }
+
+      const networkHold = platformDetail.networkHoldVoList?.[0];
+      if (!networkHold) {
+        console.log('No network hold data found');
+        setFinkeeperDetailData(prev => ({ ...prev, [platformId]: data }));
+        return;
+      }
+
+      const investments = networkHold.investTokenBalanceVoList || [];
+      console.log(`Found ${investments.length} investments for platform ${platformId}:`, investments);
+
+      // Логируем детали каждого инвестирования
+      investments.forEach((investment: FinkeeperInvestment, index: number) => {
+        console.log(`Investment ${index + 1} for platform ${platformId}:`, {
+          name: investment.investmentName,
+          type: investment.investName,
+          totalValue: investment.totalValue,
+          assets: investment.assetsTokenList?.length || 0,
+          rewards: investment.rewardDefiTokenInfo?.[0]?.baseDefiTokenInfos?.length || 0
+        });
+      });
+      
       setFinkeeperDetailData(prev => ({ ...prev, [platformId]: data }));
     } catch (error) {
-      console.error('Error fetching Finkeeper detail:', error);
+      console.error('Error fetching Finkeeper detail for platform', platformId, ':', error);
       setFinkeeperErrors(prev => ({ 
         ...prev, 
         [platformId]: error instanceof Error ? error.message : 'Failed to load data' 
@@ -544,17 +648,24 @@ export default function ControlPage() {
     }
   };
 
+  // Мемоизированная функция для получения детальных данных
+  const getDetailData = useMemo(() => (platformId: number) => {
+    const data = finkeeperDetailData[platformId]?.data?.walletIdPlatformDetailList?.[0]?.networkHoldVoList?.[0]?.investTokenBalanceVoList || [];
+    console.log(`Getting detail data for platform ${platformId}:`, {
+      hasData: !!finkeeperDetailData[platformId],
+      investmentsCount: data.length,
+      platformId
+    });
+    return data;
+  }, [finkeeperDetailData]);
+
   // Функция для повторной загрузки данных
   const retryFetch = useCallback((platformId: number) => {
+    console.log('Retrying fetch for platform:', platformId);
     if (wallet.account) {
       fetchFinkeeperDetail(platformId, wallet.account.address);
     }
   }, [wallet.account]);
-
-  // Мемоизированная функция для получения детальных данных
-  const getDetailData = useMemo(() => (platformId: number) => {
-    return finkeeperDetailData[platformId]?.data?.walletIdPlatformDetailList[0]?.networkHoldVoList[0]?.investTokenBalanceVoList || [];
-  }, [finkeeperDetailData]);
 
   const handleDisconnect = () => {
     wallet.disconnect();
@@ -643,6 +754,139 @@ export default function ControlPage() {
       checkNaviRewards();
     }
   }, [wallet.connected, wallet.account]);
+
+  // Обновляем обработку отображения деталей протокола
+  const renderProtocolDetails = (platform: FinkeeperPlatform) => {
+    const platformId = platform.analysisPlatformId;
+    const isLoading = isLoadingFinkeeperDetail[platformId];
+    const error = finkeeperErrors[platformId];
+    const investments = getDetailData(platformId);
+
+    if (isLoading) {
+      return (
+        <div className="flex justify-center py-4">
+          <span className="text-sm text-zinc-500">Loading positions...</span>
+        </div>
+      );
+    }
+
+    if (error) {
+      return (
+        <div className="text-center py-4">
+          <p className="text-sm text-red-500 mb-2">{error}</p>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => retryFetch(platformId)}
+          >
+            Retry
+          </Button>
+        </div>
+      );
+    }
+
+    if (!investments || investments.length === 0) {
+      return (
+        <div className="text-center py-4 text-sm text-zinc-500">
+          No active positions
+        </div>
+      );
+    }
+
+    return (
+      <div className="space-y-3">
+        {investments
+          .filter(investment => !hideSmallAssets || parseFloat(investment.totalValue) >= 1)
+          .map((investment: FinkeeperInvestment, index: number) => (
+            <div key={index} className="p-3 rounded-lg bg-zinc-50 dark:bg-zinc-800/50">
+              <div className="flex justify-between items-center mb-2">
+                <div className="flex items-center gap-2">
+                  <span className="font-medium">{investment.investmentName}</span>
+                  <span className={`text-xs px-1.5 py-0.5 rounded ${
+                    investment.investName === 'Borrow'
+                      ? 'bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400'
+                      : 'bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-400'
+                  }`}>
+                    {investment.investName}
+                  </span>
+                </div>
+                <span className="font-medium">
+                  ${formatNumber(parseFloat(investment.totalValue))}
+                </span>
+              </div>
+
+              {/* Основные активы */}
+              <div className="space-y-2 mb-2">
+                {investment.assetsTokenList
+                  .filter(token => !hideSmallAssets || parseFloat(token.currencyAmount) >= 1)
+                  .map((token, tokenIndex) => (
+                    <div key={tokenIndex} className="flex justify-between items-center text-sm">
+                      <div className="flex items-center gap-2">
+                        <Image
+                          src={token.tokenLogo}
+                          alt={token.tokenSymbol}
+                          width={16}
+                          height={16}
+                          className="rounded"
+                        />
+                        <span>{token.tokenSymbol}</span>
+                      </div>
+                      <div className="text-right">
+                        <div>{formatNumber(parseFloat(token.coinAmount))} {token.tokenSymbol}</div>
+                        <div className="text-xs text-zinc-500">
+                          ${formatNumber(parseFloat(token.currencyAmount))}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+              </div>
+
+              {/* Награды */}
+              {investment.rewardDefiTokenInfo?.[0]?.baseDefiTokenInfos?.length > 0 && (
+                <div className="mt-2 pt-2 border-t border-zinc-200 dark:border-zinc-700">
+                  <div className="text-sm font-medium mb-2">Rewards</div>
+                  <div className="space-y-2">
+                    {investment.rewardDefiTokenInfo[0].baseDefiTokenInfos
+                      .filter(token => !hideSmallAssets || parseFloat(token.currencyAmount) >= 1)
+                      .map((token, tokenIndex) => (
+                        <div key={tokenIndex} className="flex justify-between items-center text-sm">
+                          <div className="flex items-center gap-2">
+                            <Image
+                              src={token.tokenLogo}
+                              alt={token.tokenSymbol}
+                              width={16}
+                              height={16}
+                              className="rounded"
+                            />
+                            <span>{token.tokenSymbol}</span>
+                          </div>
+                          <div className="text-right">
+                            <div>{formatNumber(parseFloat(token.coinAmount))} {token.tokenSymbol}</div>
+                            <div className="text-xs text-zinc-500">
+                              ${formatNumber(parseFloat(token.currencyAmount))}
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          ))}
+        {/* Кнопка сбора наград для Navi */}
+        {platformId === 115572 && naviData.rewards.length > 0 && (
+          <Button
+            variant="outline"
+            size="sm"
+            className="w-full text-emerald-600 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800 hover:bg-emerald-100 dark:hover:bg-emerald-800/50"
+            onClick={handleNaviCollect}
+          >
+            Collect Navi rewards
+          </Button>
+        )}
+      </div>
+    );
+  };
 
   return (
     <div className="flex flex-row justify-between h-dvh bg-white dark:bg-zinc-900">
@@ -1054,145 +1298,7 @@ export default function ControlPage() {
                         fetchFinkeeperDetail(platform.analysisPlatformId, wallet.account.address);
                       }
                     },
-                    content: (
-                      <div className="p-3">
-                        {isLoadingFinkeeperDetail[platform.analysisPlatformId] ? (
-                          <div className="flex justify-center py-4">
-                            <span className="text-sm text-zinc-500">Loading positions...</span>
-                          </div>
-                        ) : finkeeperErrors[platform.analysisPlatformId] ? (
-                          <div className="text-center py-4">
-                            <p className="text-sm text-red-500 mb-2">
-                              {finkeeperErrors[platform.analysisPlatformId]}
-                            </p>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => retryFetch(platform.analysisPlatformId)}
-                            >
-                              Retry
-                            </Button>
-                          </div>
-                        ) : wallet.connected ? (
-                          parseFloat(platform.currencyAmount || '0') > 0 ? (
-                            <div className="space-y-3">
-                              {platform.analysisPlatformId === 115572 && (
-                                <div className="space-y-3">
-                                  {getDetailData(platform.analysisPlatformId)
-                                    .filter(investment => !hideSmallAssets || parseFloat(investment.totalValue) >= 1)
-                                    .map((investment: FinkeeperInvestment, index: number) => (
-                                      <div key={index} className="p-3 rounded-lg bg-zinc-50 dark:bg-zinc-800/50">
-                                        <div className="flex justify-between items-center mb-2">
-                                          <div className="flex items-center gap-2">
-                                            <span className="font-medium">{investment.investmentName}</span>
-                                            <span className={`text-xs px-1.5 py-0.5 rounded ${
-                                              investment.investName === 'Borrow'
-                                                ? 'bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400'
-                                                : 'bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-400'
-                                            }`}>
-                                              {investment.investName}
-                                            </span>
-                                          </div>
-                                          <span className="font-medium">
-                                            ${formatNumber(parseFloat(investment.totalValue))}
-                                          </span>
-                                        </div>
-
-                                        {/* Основные активы */}
-                                        <div className="space-y-2 mb-2">
-                                          {investment.assetsTokenList
-                                            .filter(token => !hideSmallAssets || parseFloat(token.currencyAmount) >= 1)
-                                            .map((token, tokenIndex) => (
-                                              <div key={tokenIndex} className="flex justify-between items-center text-sm">
-                                                <div className="flex items-center gap-2">
-                                                  <Image
-                                                    src={token.tokenLogo}
-                                                    alt={token.tokenSymbol}
-                                                    width={16}
-                                                    height={16}
-                                                    className="rounded"
-                                                  />
-                                                  <span>{token.tokenSymbol}</span>
-                                                </div>
-                                                <div className="text-right">
-                                                  <div>{formatNumber(parseFloat(token.coinAmount))} {token.tokenSymbol}</div>
-                                                  <div className="text-xs text-zinc-500">
-                                                    ${formatNumber(parseFloat(token.currencyAmount))}
-                                                  </div>
-                                                </div>
-                                              </div>
-                                            ))}
-                                          {hideSmallAssets && investment.assetsTokenList.filter(token => parseFloat(token.currencyAmount) < 1).length > 0 && (
-                                            <div className="text-xs text-zinc-500">
-                                              {investment.assetsTokenList.filter(token => parseFloat(token.currencyAmount) < 1).length} assets hidden
-                                            </div>
-                                          )}
-                                        </div>
-
-                                        {/* Награды */}
-                                        {investment.rewardDefiTokenInfo[0]?.baseDefiTokenInfos.length > 0 && (
-                                          <div className="mt-2 pt-2 border-t border-zinc-200 dark:border-zinc-700">
-                                            <div className="flex justify-between items-center mb-2">
-                                              <div className="text-sm font-medium">Rewards</div>
-                                              {hideSmallAssets && investment.rewardDefiTokenInfo[0].baseDefiTokenInfos.filter(token => parseFloat(token.currencyAmount) < 1).length > 0 && (
-                                                <div className="text-xs text-zinc-500">
-                                                  {investment.rewardDefiTokenInfo[0].baseDefiTokenInfos.filter(token => parseFloat(token.currencyAmount) < 1).length} assets hidden
-                                                </div>
-                                              )}
-                                            </div>
-                                            <div className="space-y-2">
-                                              {investment.rewardDefiTokenInfo[0].baseDefiTokenInfos
-                                                .filter(token => !hideSmallAssets || parseFloat(token.currencyAmount) >= 1)
-                                                .map((token, tokenIndex) => (
-                                                  <div key={tokenIndex} className="flex justify-between items-center text-sm">
-                                                    <div className="flex items-center gap-2">
-                                                      <Image
-                                                        src={token.tokenLogo}
-                                                        alt={token.tokenSymbol}
-                                                        width={16}
-                                                        height={16}
-                                                        className="rounded"
-                                                      />
-                                                      <span>{token.tokenSymbol}</span>
-                                                    </div>
-                                                    <div className="text-right">
-                                                      <div>{formatNumber(parseFloat(token.coinAmount))} {token.tokenSymbol}</div>
-                                                      <div className="text-xs text-zinc-500">
-                                                        ${formatNumber(parseFloat(token.currencyAmount))}
-                                                      </div>
-                                                    </div>
-                                                  </div>
-                                                ))}
-                                            </div>
-                                          </div>
-                                        )}
-                                      </div>
-                                    ))}
-                                  {naviData.rewards.length > 0 && (
-                                    <Button
-                                      variant="outline"
-                                      size="sm"
-                                      className="w-full text-emerald-600 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800 hover:bg-emerald-100 dark:hover:bg-emerald-800/50"
-                                      onClick={handleNaviCollect}
-                                    >
-                                      Collect Navi rewards
-                                    </Button>
-                                  )}
-                                </div>
-                              )}
-                            </div>
-                          ) : (
-                            <div className="text-center py-4 text-sm text-zinc-500">
-                              No active positions
-                            </div>
-                          )
-                        ) : (
-                          <div className="text-center py-4 text-sm text-zinc-500">
-                            Connect wallet to view positions
-                          </div>
-                        )}
-                      </div>
-                    )
+                    content: renderProtocolDetails(platform)
                   })) || [])
               ]
                 .filter(Boolean)
@@ -1318,7 +1424,7 @@ export default function ControlPage() {
                 )}
 
                 {/* График распределения по протоколам */}
-                {(momentumData?.length > 0 || scallopData?.lendings?.length > 0 || finkeeperData?.data?.walletIdPlatformList?.[0]?.platformList?.length > 0) && (
+                {(momentumData?.length > 0 || scallopData?.lendings?.length > 0 || (finkeeperData?.data?.walletIdPlatformList?.[0]?.platformList?.length ?? 0) > 0) && (
                   <div>
                     <h3 className="text-lg font-medium text-zinc-900 dark:text-zinc-100 mb-4">
                       Protocol Distribution
@@ -1328,19 +1434,25 @@ export default function ControlPage() {
                         ...(momentumData?.length > 0 ? [{
                           protocol: 'Momentum',
                           value: momentumData.reduce((sum: number, pos: any) => sum + (pos.amount || 0), 0),
-                          icon: 'https://app.mmt.finance/assets/images/momentum-logo-sq.svg'
+                          icon: 'https://app.mmt.finance/assets/images/momentum-logo-sq.svg',
+                          color: protocolColors[0]
                         }] : []),
                         ...(scallopData?.lendings?.length > 0 ? [{
                           protocol: 'Scallop',
                           value: scallopData.lendings.reduce((sum: number, lending: any) => sum + (lending.suppliedValue || 0), 0),
-                          icon: 'https://app.scallop.io/images/logo-192.png'
+                          icon: 'https://app.scallop.io/images/logo-192.png',
+                          color: protocolColors[1]
                         }] : []),
                         ...(finkeeperData?.data?.walletIdPlatformList?.[0]?.platformList
-                          ?.filter((platform: FinkeeperPlatform) => !['Scallop', 'Momentum'].includes(platform.platformName))
-                          .map((platform: FinkeeperPlatform) => ({
+                          ?.filter((platform: FinkeeperPlatform) => 
+                            !['Scallop', 'Momentum'].includes(platform.platformName) && 
+                            parseFloat(platform.currencyAmount || '0') > 0
+                          )
+                          .map((platform: FinkeeperPlatform, index: number) => ({
                             protocol: platform.platformName,
                             value: parseFloat(platform.currencyAmount || '0'),
-                            icon: platform.platformLogo
+                            icon: platform.platformLogo,
+                            color: protocolColors[(index + 2) % protocolColors.length]
                           })) || [])
                       ]}
                     />
