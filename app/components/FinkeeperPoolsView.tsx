@@ -4,6 +4,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
+import { ArrowUpRight } from "lucide-react";
 import { 
   fetchFinkeeperPools, 
   filterPools, 
@@ -12,6 +13,7 @@ import {
   getUniqueTokens,
   type FinkeeperPool 
 } from '@/app/utils/finkeeper-pools';
+import { getProtocolLogo, getProtocolWebsite } from '@/app/config/protocols';
 import Image from 'next/image';
 
 // Иконки протоколов
@@ -198,22 +200,21 @@ export function FinkeeperPoolsView() {
                 </td>
                 <td className="px-3 py-2">
                   <div className="flex items-center gap-2">
-                    {protocolIcons[pool.platformName] && (
-                      <Image
-                        src={protocolIcons[pool.platformName]}
-                        alt={pool.platformName}
-                        width={16}
-                        height={16}
-                        className="rounded"
-                      />
-                    )}
+                    <Image
+                      src={getProtocolLogo(pool.platformName)}
+                      alt={pool.platformName}
+                      width={16}
+                      height={16}
+                      className="rounded"
+                    />
                     <a
-                      href={protocolLinks[pool.platformName]}
+                      href={getProtocolWebsite(pool.platformName)}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="text-blue-500 hover:text-blue-600"
+                      className="text-blue-500 hover:text-blue-600 flex items-center gap-1"
                     >
                       {pool.platformName}
+                      <ArrowUpRight className="w-4 h-4" />
                     </a>
                   </div>
                 </td>
