@@ -1386,75 +1386,57 @@ export default function ControlPage() {
               <TokenPools symbol={selectedAsset.data.symbol} />
             </div>
           ) : (
-            <div className="text-center py-8">
-              <div className="text-lg font-medium text-zinc-900 dark:text-zinc-100 mb-2">
-                Select a token to see earning opportunities
-              </div>
-              <p className="text-sm text-zinc-500 mb-8">
-                Click on any token from your wallet to discover pools and strategies
-              </p>
-              
-              <div className="flex flex-wrap justify-center gap-8">
-                {/* График распределения токенов */}
-                {userTokens.length > 0 && (
-                  <div>
-                    <h3 className="text-lg font-medium text-zinc-900 dark:text-zinc-100 mb-4">
-                      Token Distribution
-                    </h3>
-                    <PieChartAssets 
-                      tokenBalances={userTokens.map(token => ({
-                        symbol: token.symbol,
-                        balance: token.balance,
-                        decimals: token.decimals,
-                        value: parseFloat(token.usdPrice || '0')
-                      }))}
-                    />
-                  </div>
-                )}
-
-                {/* График распределения по протоколам */}
-                {(finkeeperData?.data?.walletIdPlatformList?.[0]?.platformList?.length ?? 0) > 0 && (
-                  <div>
-                    <h3 className="text-lg font-medium text-zinc-900 dark:text-zinc-100 mb-4">
-                      Protocol Distribution
-                    </h3>
-                    <ProtocolPieChart 
-                      protocolBalances={[
-                        ...(finkeeperData?.data?.walletIdPlatformList?.[0]?.platformList
-                          ?.filter((platform: FinkeeperPlatform) => 
-                            parseFloat(platform.currencyAmount || '0') > 0
-                          )
-                          .map((platform: FinkeeperPlatform, index: number) => ({
-                            protocol: platform.platformName,
-                            value: parseFloat(platform.currencyAmount || '0'),
-                            icon: platform.platformLogo,
-                            color: protocolColors[index % protocolColors.length]
-                          })) || [])
-                      ]}
-                    />
-                  </div>
-                )}
-              </div>
-
-              <div className="text-center mb-8">
-                <h2 className="text-2xl font-bold mb-2">Discover Opportunities</h2>
-                <p className="text-zinc-500 dark:text-zinc-400">
-                  Click on any token from your wallet to discover pools and strategies
-                </p>
-              </div>
-
-              <FinkeeperPoolsView />
-
-              {wallet.connected && (
+            <div className="space-y-8">
+              {wallet.connected ? (
                 <>
-                  {/* Графики */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
-                    {/* ... existing charts code ... */}
+                  <div className="text-center mb-8">
+                    <h2 className="text-2xl font-bold mb-4">Select token to discover earning opportunities</h2>
+                    <p className="text-zinc-500">
+                      Click on any token to see available pools and start earning
+                    </p>
                   </div>
 
-                  <FinkeeperPoolsView />
+                  {/* Графики */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="bg-white dark:bg-zinc-800 rounded-lg p-4 shadow-sm">
+                      <h3 className="text-lg font-semibold mb-4">Assets Distribution</h3>
+                      <PieChartAssets
+                        tokenBalances={userTokens.map(t => ({
+                          symbol: t.symbol,
+                          balance: t.balance,
+                          decimals: t.decimals,
+                          value: parseFloat(t.usdPrice || '0')
+                        }))}
+                      />
+                    </div>
+                    <div className="bg-white dark:bg-zinc-800 rounded-lg p-4 shadow-sm">
+                      <h3 className="text-lg font-semibold mb-4">Protocol Distribution</h3>
+                      <ProtocolPieChart
+                        protocolBalances={[
+                          { protocol: 'Wallet', value: totalTokenValue },
+                          ...(finkeeperData?.data?.walletIdPlatformList?.[0]?.platformList || [])
+                            .map(p => ({
+                              protocol: p.platformName,
+                              value: parseFloat(p.currencyAmount || '0')
+                            }))
+                        ]}
+                      />
+                    </div>
+                  </div>
                 </>
+              ) : (
+                <div className="text-center mb-8">
+                  <h2 className="text-2xl font-bold mb-4">Discover</h2>
+                  <p className="text-zinc-500">
+                    Connect your wallet to view your tokens and discover earning opportunities
+                  </p>
+                </div>
               )}
+
+              {/* Finkeeper Pools */}
+              <div className="mt-8">
+                <FinkeeperPoolsView />
+              </div>
             </div>
           )}
         </div>

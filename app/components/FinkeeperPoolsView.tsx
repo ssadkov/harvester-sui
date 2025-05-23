@@ -39,9 +39,6 @@ export function FinkeeperPoolsView() {
   
   // Фильтры
   const [tokenSearch, setTokenSearch] = useState<string>('');
-  const [selectedProtocol, setSelectedProtocol] = useState<string>('');
-  const [minRate, setMinRate] = useState<string>('');
-  const [minTvl, setMinTvl] = useState<string>('');
   
   // Сортировка
   const [sortConfig, setSortConfig] = useState<{
@@ -71,26 +68,20 @@ export function FinkeeperPoolsView() {
     loadPools();
   }, []);
 
-  // Получаем уникальные протоколы
-  const uniqueProtocols = useMemo(() => getUniqueProtocols(pools), [pools]);
-
   // Фильтруем и сортируем пулы
   const filteredPools = useMemo(() => {
     let result = [...pools];
     
     // Применяем фильтры
     result = filterPools(result, {
-      token: tokenSearch,
-      protocol: selectedProtocol,
-      minRate: minRate ? parseFloat(minRate) : undefined,
-      minTvl: minTvl ? parseFloat(minTvl) : undefined,
+      token: tokenSearch
     });
     
     // Применяем сортировку
     result = sortPools(result, sortConfig.key, sortConfig.direction);
     
     return result;
-  }, [pools, tokenSearch, selectedProtocol, minRate, minTvl, sortConfig]);
+  }, [pools, tokenSearch, sortConfig]);
 
   const handleSort = (key: 'rate' | 'tvl' | 'name' | 'protocol') => {
     setSortConfig(prev => ({
@@ -156,88 +147,63 @@ export function FinkeeperPoolsView() {
 
   return (
     <div className="space-y-4">
-      {/* Фильтры */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <Input
-          type="text"
-          placeholder="Search by token..."
-          value={tokenSearch}
-          onChange={(e) => setTokenSearch(e.target.value)}
-          className="w-full"
-        />
-
-        <Select
-          value={selectedProtocol}
-          onValueChange={setSelectedProtocol}
-          defaultValue=""
-        >
-          <option value="">All protocols</option>
-          {uniqueProtocols.map(protocol => (
-            <option key={protocol} value={protocol}>{protocol}</option>
-          ))}
-        </Select>
-
-        <Input
-          type="number"
-          placeholder="Min APR (%)"
-          value={minRate}
-          onChange={(e) => setMinRate(e.target.value)}
-        />
-
-        <Input
-          type="number"
-          placeholder="Min TVL ($)"
-          value={minTvl}
-          onChange={(e) => setMinTvl(e.target.value)}
-        />
-      </div>
+      {/* Заголовок */}
+      <h2 className="text-2xl font-bold text-center mb-6">Discover earning opportunities</h2>
 
       {/* Таблица пулов */}
       <div className="overflow-x-auto">
-        <table className="w-full">
+        <table className="w-full max-w-4xl mx-auto">
           <thead>
             <tr className="border-b">
-              <th className="px-4 py-2 text-left">
-                <div className="flex items-center">
-                  Pool
-                  <SortButton columnKey="name" />
+              <th className="px-3 py-2 text-left w-1/3">
+                <div className="flex items-center gap-2">
+                  <div className="flex items-center">
+                    Pool
+                    <SortButton columnKey="name" />
+                  </div>
+                  <Input
+                    type="text"
+                    placeholder="Search by token..."
+                    value={tokenSearch}
+                    onChange={(e) => setTokenSearch(e.target.value)}
+                    className="w-48 h-8 text-sm"
+                  />
                 </div>
               </th>
-              <th className="px-4 py-2 text-left">
+              <th className="px-3 py-2 text-left w-1/4">
                 <div className="flex items-center">
                   Protocol
                   <SortButton columnKey="protocol" />
                 </div>
               </th>
-              <th className="px-4 py-2 text-right">
+              <th className="px-3 py-2 text-right w-1/6">
                 <div className="flex items-center justify-end">
                   APR
                   <SortButton columnKey="rate" />
                 </div>
               </th>
-              <th className="px-4 py-2 text-right">
+              <th className="px-3 py-2 text-right hidden md:table-cell w-1/6">
                 <div className="flex items-center justify-end">
                   TVL
                   <SortButton columnKey="tvl" />
                 </div>
               </th>
-              <th className="px-4 py-2 text-right">Tokens</th>
             </tr>
           </thead>
           <tbody>
             {filteredPools.map((pool) => (
               <tr key={pool.investmentId} className="border-b hover:bg-zinc-50 dark:hover:bg-zinc-800">
-                <td className="px-4 py-2">
+                <td className="px-3 py-2">
                   <div className="font-medium">{pool.investmentName}</div>
                 </td>
-                <td className="px-4 py-2">
+                <td className="px-3 py-2">
                   <div className="flex items-center gap-2">
                     {protocolIcons[pool.platformName] && (
                       <Image
                         src={protocolIcons[pool.platformName]}
                         alt={pool.platformName}
-                        width={20}
-                        height={20}
+                        width={16}
+                        height={16}
                         className="rounded"
                       />
                     )}
@@ -251,16 +217,13 @@ export function FinkeeperPoolsView() {
                     </a>
                   </div>
                 </td>
-                <td className="px-4 py-2 text-right">
+                <td className="px-3 py-2 text-right">
                   <span className="text-green-600 dark:text-green-400">
                     {(parseFloat(pool.rate) * 100).toFixed(2)}%
                   </span>
                 </td>
-                <td className="px-4 py-2 text-right">
+                <td className="px-3 py-2 text-right hidden md:table-cell">
                   ${parseFloat(pool.tvl).toLocaleString()}
-                </td>
-                <td className="px-4 py-2 text-right">
-                  {pool.underlyingToken.map(token => token.tokenSymbol).join(', ')}
                 </td>
               </tr>
             ))}
