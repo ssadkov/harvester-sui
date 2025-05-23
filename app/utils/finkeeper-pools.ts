@@ -54,11 +54,18 @@ const poolsCache = new Map<string, {
   timestamp: number;
 }>();
 
-// Время жизни кэша (2 секунды)
-const CACHE_TTL = 2000;
+// Время жизни кэша (5 минут)
+const CACHE_TTL = 5 * 60 * 1000;
 
-// Функция для получения всех пулов с пагинацией
-export async function fetchAllFinkeeperPools(): Promise<FinkeeperPool[]> {
+// Максимальное количество попыток
+const MAX_RETRIES = 3;
+const RETRY_DELAY = 1000; // 1 секунда
+
+// Функция для задержки
+const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
+// Функция для получения всех пулов с пагинацией и повторными попытками
+export async function fetchAllFinkeeperPools(retryCount = 0): Promise<FinkeeperPool[]> {
   try {
     // Первый запрос для получения общего количества
     const initialParams = poolsRequestSchema.parse({});
@@ -93,7 +100,7 @@ export async function fetchAllFinkeeperPools(): Promise<FinkeeperPool[]> {
       console.log(`Fetching page ${page + 1} of ${totalPages} (offset: ${offset})`);
 
       // Ждем 1.2 секунды перед следующим запросом
-      await new Promise(resolve => setTimeout(resolve, 1200));
+      await delay(1200);
 
       const pageParams = {
         ...initialParams,
@@ -123,7 +130,12 @@ export async function fetchAllFinkeeperPools(): Promise<FinkeeperPool[]> {
     return allPools;
   } catch (error) {
     console.error('Error fetching all pools:', error);
-    return [];
+    if (retryCount < MAX_RETRIES) {
+      console.log(`Retrying... Attempt ${retryCount + 1} of ${MAX_RETRIES}`);
+      await delay(RETRY_DELAY * (retryCount + 1)); // Увеличиваем задержку с каждой попыткой
+      return fetchAllFinkeeperPools(retryCount + 1);
+    }
+    throw error; // Если все попытки исчерпаны, пробрасываем ошибку
   }
 }
 
@@ -151,7 +163,12 @@ export async function fetchFinkeeperPools(params: Partial<z.infer<typeof poolsRe
     return allPools;
   } catch (error) {
     console.error('Error fetching Finkeeper pools:', error);
-    return [];
+    // Если есть кэшированные данные, используем их даже если они устарели
+    if (cachedData) {
+      console.log('Using stale cached data due to error');
+      return cachedData.data;
+    }
+    throw error;
   }
 }
 

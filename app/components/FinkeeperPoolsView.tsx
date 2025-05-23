@@ -38,6 +38,7 @@ export function FinkeeperPoolsView() {
   const [pools, setPools] = useState<FinkeeperPool[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [retryCount, setRetryCount] = useState(0);
   
   // Фильтры
   const [tokenSearch, setTokenSearch] = useState<string>('');
@@ -57,10 +58,12 @@ export function FinkeeperPoolsView() {
         setError('No pools available at the moment. Please try again later.');
       } else {
         setPools(data);
+        setRetryCount(0); // Сбрасываем счетчик попыток при успешной загрузке
       }
     } catch (err) {
       console.error('Error in FinkeeperPoolsView:', err);
       setError(err instanceof Error ? err.message : 'Failed to load pools. Please try again later.');
+      setRetryCount(prev => prev + 1);
     } finally {
       setIsLoading(false);
     }
@@ -69,6 +72,16 @@ export function FinkeeperPoolsView() {
   useEffect(() => {
     loadPools();
   }, []);
+
+  // Автоматическая повторная попытка при ошибке
+  useEffect(() => {
+    if (error && retryCount < 3) {
+      const timer = setTimeout(() => {
+        loadPools();
+      }, 2000 * (retryCount + 1)); // Увеличиваем задержку с каждой попыткой
+      return () => clearTimeout(timer);
+    }
+  }, [error, retryCount]);
 
   // Фильтруем и сортируем пулы
   const filteredPools = useMemo(() => {
@@ -107,8 +120,9 @@ export function FinkeeperPoolsView() {
 
   if (isLoading) {
     return (
-      <div className="flex justify-center items-center h-64">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-zinc-900 dark:border-white"></div>
+      <div className="flex flex-col items-center justify-center h-64">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-zinc-900 dark:border-white mb-4"></div>
+        <p className="text-sm text-zinc-500">Loading pools...</p>
       </div>
     );
   }
@@ -121,6 +135,11 @@ export function FinkeeperPoolsView() {
         </div>
         <p className="text-sm text-zinc-500 mb-4">
           {error}
+          {retryCount < 3 && (
+            <span className="block mt-2">
+              Retrying in {2 * (retryCount + 1)} seconds...
+            </span>
+          )}
         </p>
         <Button
           variant="outline"
@@ -128,7 +147,7 @@ export function FinkeeperPoolsView() {
           onClick={loadPools}
           className="mt-4"
         >
-          Retry
+          Retry Now
         </Button>
       </div>
     );
