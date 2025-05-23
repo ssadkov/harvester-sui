@@ -166,7 +166,7 @@ export function FinkeeperPoolsView() {
                     placeholder="Search by token..."
                     value={tokenSearch}
                     onChange={(e) => setTokenSearch(e.target.value)}
-                    className="w-48 h-8 text-sm"
+                    className="w-24 md:w-48 h-8 text-sm"
                   />
                 </div>
               </th>
