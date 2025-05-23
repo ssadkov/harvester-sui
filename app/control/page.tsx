@@ -13,6 +13,8 @@ import { formatTokenBalance, formatUSDValue } from '@/app/utils/format';
 import { Token, sortTokensByValue, fetchMomentumBalance, fetchScallopBalance } from '@/app/actions/balance-actions';
 import { createClaimAllTx, initMomentumSDK } from '@/app/utils/momentum-utils';
 import { createClaimAllRewardsTx, initNaviSDK, getAvailableRewards } from '@/app/utils/navi-utils';
+import { PieChartAssets } from '@/components/PieChartAssets';
+import { ProtocolPieChart } from '@/components/ProtocolPieChart';
 
 // Интерфейсы для данных
 interface Pool {
@@ -424,7 +426,7 @@ export default function ControlPage() {
       // Проверяем наличие позиций и устанавливаем начальное состояние блоков
       const hasMomentumPositions = Array.isArray(momentumResult.raw) && momentumResult.raw.length > 0;
       const hasScallopPositions = scallopResult.raw && scallopResult.raw.lendings && scallopResult.raw.lendings.length > 0;
-      const hasFinkeeperPositions = finkeeperData?.data?.walletIdPlatformList?.[0]?.platformList?.some(
+      const hasFinkeeperPositions = finkeeperData?.data?.walletIdPlatformList?.[0]?.platformList?.[0]?.platformList?.some(
         platform => !['Scallop', 'Momentum'].includes(platform.platformName) && parseFloat(platform.currencyAmount || '0') > 0
       );
       
@@ -1293,9 +1295,58 @@ export default function ControlPage() {
               <div className="text-lg font-medium text-zinc-900 dark:text-zinc-100 mb-2">
                 Select a token to see earning opportunities
               </div>
-              <p className="text-sm text-zinc-500">
+              <p className="text-sm text-zinc-500 mb-8">
                 Click on any token from your wallet to discover pools and strategies
               </p>
+              
+              <div className="flex flex-wrap justify-center gap-8">
+                {/* График распределения токенов */}
+                {userTokens.length > 0 && (
+                  <div>
+                    <h3 className="text-lg font-medium text-zinc-900 dark:text-zinc-100 mb-4">
+                      Token Distribution
+                    </h3>
+                    <PieChartAssets 
+                      tokenBalances={userTokens.map(token => ({
+                        symbol: token.symbol,
+                        balance: token.balance,
+                        decimals: token.decimals,
+                        value: parseFloat(token.usdPrice || '0')
+                      }))}
+                    />
+                  </div>
+                )}
+
+                {/* График распределения по протоколам */}
+                {(momentumData?.length > 0 || scallopData?.lendings?.length > 0 || finkeeperData?.data?.walletIdPlatformList?.[0]?.platformList?.length > 0) && (
+                  <div>
+                    <h3 className="text-lg font-medium text-zinc-900 dark:text-zinc-100 mb-4">
+                      Protocol Distribution
+                    </h3>
+                    <ProtocolPieChart 
+                      protocolBalances={[
+                        ...(momentumData?.length > 0 ? [{
+                          protocol: 'Momentum',
+                          value: momentumData.reduce((sum: number, pos: any) => sum + (pos.amount || 0), 0),
+                          icon: 'https://app.mmt.finance/assets/images/momentum-logo-sq.svg'
+                        }] : []),
+                        ...(scallopData?.lendings?.length > 0 ? [{
+                          protocol: 'Scallop',
+                          value: scallopData.lendings.reduce((sum: number, lending: any) => sum + (lending.suppliedValue || 0), 0),
+                          icon: 'https://app.scallop.io/images/logo-192.png'
+                        }] : []),
+                        ...(finkeeperData?.data?.walletIdPlatformList?.[0]?.platformList
+                          ?.filter((platform: FinkeeperPlatform) => !['Scallop', 'Momentum'].includes(platform.platformName))
+                          .map((platform: FinkeeperPlatform) => ({
+                            protocol: platform.platformName,
+                            value: parseFloat(platform.currencyAmount || '0'),
+                            icon: platform.platformLogo
+                          })) || [])
+                      ]}
+                    />
+                  </div>
+                )}
+              </div>
             </div>
           )}
         </div>
