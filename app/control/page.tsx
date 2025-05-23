@@ -12,6 +12,7 @@ import { processPoolsData } from '@/utils/poolUtils';
 import { formatTokenBalance, formatUSDValue } from '@/app/utils/format';
 import { Token, sortTokensByValue, fetchMomentumBalance, fetchScallopBalance } from '@/app/actions/balance-actions';
 import { createClaimAllTx, initMomentumSDK } from '@/app/utils/momentum-utils';
+import { createClaimAllRewardsTx, initNaviSDK, getAvailableRewards } from '@/app/utils/navi-utils';
 
 // Интерфейсы для данных
 interface Pool {
@@ -287,6 +288,12 @@ export default function ControlPage() {
 
   const [totalTokenValue, setTotalTokenValue] = useState(0);
   const [totalAssets, setTotalAssets] = useState(0);
+
+  // Состояния для Navi
+  const [naviData, setNaviData] = useState<{
+    rewards: any[];
+    isLoading: boolean;
+  }>({ rewards: [], isLoading: false });
 
   // Преобразуем poolsData в массив пулов
   const filteredPools = poolsData ? Object.entries(poolsData).flatMap(([protocol, pools]) =>
@@ -588,6 +595,52 @@ export default function ControlPage() {
     }, 0);
     setTotalTokenValue(total);
   }, [userTokens]);
+
+  // Функция для сбора наград Navi
+  const handleNaviCollect = async () => {
+    if (!wallet.account) return;
+    
+    try {
+      console.log('Starting Navi collect rewards...');
+      
+      const client = initNaviSDK();
+      const tx = await createClaimAllRewardsTx(client, wallet.account.address);
+      
+      await wallet.signAndExecuteTransactionBlock({
+        transactionBlock: tx as any,
+      });
+      
+      alert('Successfully collected Navi rewards!');
+      checkNaviRewards();
+    } catch (error) {
+      console.error('Error collecting Navi rewards:', error);
+    }
+  };
+
+  // Функция для проверки наград Navi
+  const checkNaviRewards = async () => {
+    if (!wallet.account) return;
+    
+    try {
+      setNaviData(prev => ({ ...prev, isLoading: true }));
+      
+      const client = initNaviSDK();
+      const rewards = await getAvailableRewards(client, wallet.account.address);
+      
+      console.log('Navi rewards:', rewards);
+      setNaviData({ rewards: rewards ? [rewards] : [], isLoading: false });
+    } catch (error) {
+      console.error('Error checking Navi rewards:', error);
+      setNaviData(prev => ({ ...prev, isLoading: false }));
+    }
+  };
+
+  // Проверяем награды Navi при подключении кошелька
+  useEffect(() => {
+    if (wallet.connected && wallet.account) {
+      checkNaviRewards();
+    }
+  }, [wallet.connected, wallet.account]);
 
   return (
     <div className="flex flex-row justify-between h-dvh bg-white dark:bg-zinc-900">
@@ -1021,70 +1074,31 @@ export default function ControlPage() {
                         ) : wallet.connected ? (
                           parseFloat(platform.currencyAmount || '0') > 0 ? (
                             <div className="space-y-3">
-                              {getDetailData(platform.analysisPlatformId)
-                                .filter(investment => !hideSmallAssets || parseFloat(investment.totalValue) >= 1)
-                                .map((investment: FinkeeperInvestment, index: number) => (
-                                  <div key={index} className="p-3 rounded-lg bg-zinc-50 dark:bg-zinc-800/50">
-                                    <div className="flex justify-between items-center mb-2">
-                                      <div className="flex items-center gap-2">
-                                        <span className="font-medium">{investment.investmentName}</span>
-                                        <span className={`text-xs px-1.5 py-0.5 rounded ${
-                                          investment.investName === 'Borrow'
-                                            ? 'bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400'
-                                            : 'bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-400'
-                                        }`}>
-                                          {investment.investName}
-                                        </span>
-                                      </div>
-                                      <span className="font-medium">
-                                        ${formatNumber(parseFloat(investment.totalValue))}
-                                      </span>
-                                    </div>
-
-                                    {/* Основные активы */}
-                                    <div className="space-y-2 mb-2">
-                                      {investment.assetsTokenList
-                                        .filter(token => !hideSmallAssets || parseFloat(token.currencyAmount) >= 1)
-                                        .map((token, tokenIndex) => (
-                                          <div key={tokenIndex} className="flex justify-between items-center text-sm">
-                                            <div className="flex items-center gap-2">
-                                              <Image
-                                                src={token.tokenLogo}
-                                                alt={token.tokenSymbol}
-                                                width={16}
-                                                height={16}
-                                                className="rounded"
-                                              />
-                                              <span>{token.tokenSymbol}</span>
-                                            </div>
-                                            <div className="text-right">
-                                              <div>{formatNumber(parseFloat(token.coinAmount))} {token.tokenSymbol}</div>
-                                              <div className="text-xs text-zinc-500">
-                                                ${formatNumber(parseFloat(token.currencyAmount))}
-                                              </div>
-                                            </div>
-                                          </div>
-                                        ))}
-                                      {hideSmallAssets && investment.assetsTokenList.filter(token => parseFloat(token.currencyAmount) < 1).length > 0 && (
-                                        <div className="text-xs text-zinc-500">
-                                          {investment.assetsTokenList.filter(token => parseFloat(token.currencyAmount) < 1).length} assets hidden
-                                        </div>
-                                      )}
-                                    </div>
-
-                                    {/* Награды */}
-                                    {investment.rewardDefiTokenInfo[0]?.baseDefiTokenInfos.length > 0 && (
-                                      <div className="mt-2 pt-2 border-t border-zinc-200 dark:border-zinc-700">
+                              {platform.analysisPlatformId === 115572 && (
+                                <div className="space-y-3">
+                                  {getDetailData(platform.analysisPlatformId)
+                                    .filter(investment => !hideSmallAssets || parseFloat(investment.totalValue) >= 1)
+                                    .map((investment: FinkeeperInvestment, index: number) => (
+                                      <div key={index} className="p-3 rounded-lg bg-zinc-50 dark:bg-zinc-800/50">
                                         <div className="flex justify-between items-center mb-2">
-                                          <div className="text-sm font-medium">Rewards</div>
-                                          {hideSmallAssets && investment.rewardDefiTokenInfo[0].baseDefiTokenInfos.filter(token => parseFloat(token.currencyAmount) < 1).length > 0 && (
-                                            <div className="text-xs text-zinc-500">
-                                              {investment.rewardDefiTokenInfo[0].baseDefiTokenInfos.filter(token => parseFloat(token.currencyAmount) < 1).length} assets hidden
-                                            </div>
-                                          )}
+                                          <div className="flex items-center gap-2">
+                                            <span className="font-medium">{investment.investmentName}</span>
+                                            <span className={`text-xs px-1.5 py-0.5 rounded ${
+                                              investment.investName === 'Borrow'
+                                                ? 'bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400'
+                                                : 'bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-400'
+                                            }`}>
+                                              {investment.investName}
+                                            </span>
+                                          </div>
+                                          <span className="font-medium">
+                                            ${formatNumber(parseFloat(investment.totalValue))}
+                                          </span>
                                         </div>
-                                        <div className="space-y-2">
-                                          {investment.rewardDefiTokenInfo[0].baseDefiTokenInfos
+
+                                        {/* Основные активы */}
+                                        <div className="space-y-2 mb-2">
+                                          {investment.assetsTokenList
                                             .filter(token => !hideSmallAssets || parseFloat(token.currencyAmount) >= 1)
                                             .map((token, tokenIndex) => (
                                               <div key={tokenIndex} className="flex justify-between items-center text-sm">
@@ -1106,11 +1120,64 @@ export default function ControlPage() {
                                                 </div>
                                               </div>
                                             ))}
+                                          {hideSmallAssets && investment.assetsTokenList.filter(token => parseFloat(token.currencyAmount) < 1).length > 0 && (
+                                            <div className="text-xs text-zinc-500">
+                                              {investment.assetsTokenList.filter(token => parseFloat(token.currencyAmount) < 1).length} assets hidden
+                                            </div>
+                                          )}
                                         </div>
+
+                                        {/* Награды */}
+                                        {investment.rewardDefiTokenInfo[0]?.baseDefiTokenInfos.length > 0 && (
+                                          <div className="mt-2 pt-2 border-t border-zinc-200 dark:border-zinc-700">
+                                            <div className="flex justify-between items-center mb-2">
+                                              <div className="text-sm font-medium">Rewards</div>
+                                              {hideSmallAssets && investment.rewardDefiTokenInfo[0].baseDefiTokenInfos.filter(token => parseFloat(token.currencyAmount) < 1).length > 0 && (
+                                                <div className="text-xs text-zinc-500">
+                                                  {investment.rewardDefiTokenInfo[0].baseDefiTokenInfos.filter(token => parseFloat(token.currencyAmount) < 1).length} assets hidden
+                                                </div>
+                                              )}
+                                            </div>
+                                            <div className="space-y-2">
+                                              {investment.rewardDefiTokenInfo[0].baseDefiTokenInfos
+                                                .filter(token => !hideSmallAssets || parseFloat(token.currencyAmount) >= 1)
+                                                .map((token, tokenIndex) => (
+                                                  <div key={tokenIndex} className="flex justify-between items-center text-sm">
+                                                    <div className="flex items-center gap-2">
+                                                      <Image
+                                                        src={token.tokenLogo}
+                                                        alt={token.tokenSymbol}
+                                                        width={16}
+                                                        height={16}
+                                                        className="rounded"
+                                                      />
+                                                      <span>{token.tokenSymbol}</span>
+                                                    </div>
+                                                    <div className="text-right">
+                                                      <div>{formatNumber(parseFloat(token.coinAmount))} {token.tokenSymbol}</div>
+                                                      <div className="text-xs text-zinc-500">
+                                                        ${formatNumber(parseFloat(token.currencyAmount))}
+                                                      </div>
+                                                    </div>
+                                                  </div>
+                                                ))}
+                                            </div>
+                                          </div>
+                                        )}
                                       </div>
-                                    )}
-                                  </div>
-                                ))}
+                                    ))}
+                                  {naviData.rewards.length > 0 && (
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      className="w-full text-emerald-600 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800 hover:bg-emerald-100 dark:hover:bg-emerald-800/50"
+                                      onClick={handleNaviCollect}
+                                    >
+                                      Collect Navi rewards
+                                    </Button>
+                                  )}
+                                </div>
+                              )}
                             </div>
                           ) : (
                             <div className="text-center py-4 text-sm text-zinc-500">
