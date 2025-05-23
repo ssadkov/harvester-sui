@@ -15,6 +15,7 @@ import { createClaimAllTx, initMomentumSDK } from '@/app/utils/momentum-utils';
 import { createClaimAllRewardsTx, initNaviSDK, getAvailableRewards } from '@/app/utils/navi-utils';
 import { PieChartAssets } from '@/components/PieChartAssets';
 import { ProtocolPieChart } from '@/components/ProtocolPieChart';
+import { FinkeeperPoolsView } from '@/app/components/FinkeeperPoolsView';
 
 // Массив цветов для графиков протоколов
 const protocolColors = [
@@ -1059,6 +1060,16 @@ export default function ControlPage() {
                 <h1 className="text-3xl font-bold text-zinc-900 dark:text-zinc-100">
                   Harvester SUI
                 </h1>
+                {isMobileView && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setShowAssetPanel(false)}
+                    className="ml-auto"
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                  </Button>
+                )}
               </div>
 
               {/* Header with wallet info and assets */}
@@ -1424,6 +1435,26 @@ export default function ControlPage() {
                   </div>
                 )}
               </div>
+
+              <div className="text-center mb-8">
+                <h2 className="text-2xl font-bold mb-2">Discover Opportunities</h2>
+                <p className="text-zinc-500 dark:text-zinc-400">
+                  Click on any token from your wallet to discover pools and strategies
+                </p>
+              </div>
+
+              <FinkeeperPoolsView />
+
+              {wallet.connected && (
+                <>
+                  {/* Графики */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
+                    {/* ... existing charts code ... */}
+                  </div>
+
+                  <FinkeeperPoolsView />
+                </>
+              )}
             </div>
           )}
         </div>
