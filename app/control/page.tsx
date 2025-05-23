@@ -778,7 +778,7 @@ export default function ControlPage() {
                     </span>
                   </div>
                   <span className="font-medium">
-                    ${formatNumber(parseFloat(investment.totalValue))}
+                    ${formatNumber(parseFloat(investment.totalValue), 2)}
                   </span>
                 </div>
 
@@ -801,17 +801,29 @@ export default function ControlPage() {
                         <div className="text-right">
                           <div>{formatNumber(parseFloat(token.coinAmount))} {token.tokenSymbol}</div>
                           <div className="text-xs text-zinc-500">
-                            ${formatNumber(parseFloat(token.currencyAmount))}
+                            ${formatNumber(parseFloat(token.currencyAmount), 2)}
                           </div>
                         </div>
                       </div>
                     ))}
+                  {hideSmallAssets && investment.assetsTokenList.filter(token => parseFloat(token.currencyAmount) < 1).length > 0 && (
+                    <div className="text-xs text-zinc-500 mt-1">
+                      {investment.assetsTokenList.filter(token => parseFloat(token.currencyAmount) < 1).length} asset{investment.assetsTokenList.filter(token => parseFloat(token.currencyAmount) < 1).length !== 1 ? 's' : ''} &lt;$1 hidden
+                    </div>
+                  )}
                 </div>
 
                 {/* Награды */}
                 {investment.rewardDefiTokenInfo?.[0]?.baseDefiTokenInfos?.length > 0 && (
                   <div className="mt-2 pt-2 border-t border-zinc-200 dark:border-zinc-700">
-                    <div className="text-sm font-medium mb-2">Rewards</div>
+                    <div className="flex justify-between items-center mb-2">
+                      <div className="text-sm font-medium">Rewards</div>
+                      {hideSmallAssets && investment.rewardDefiTokenInfo[0].baseDefiTokenInfos.filter(token => parseFloat(token.currencyAmount) < 1).length > 0 && (
+                        <div className="text-xs text-zinc-500">
+                          {investment.rewardDefiTokenInfo[0].baseDefiTokenInfos.filter(token => parseFloat(token.currencyAmount) < 1).length} reward{investment.rewardDefiTokenInfo[0].baseDefiTokenInfos.filter(token => parseFloat(token.currencyAmount) < 1).length !== 1 ? 's' : ''} &lt;$1 hidden
+                        </div>
+                      )}
+                    </div>
                     <div className="space-y-2">
                       {investment.rewardDefiTokenInfo[0].baseDefiTokenInfos
                         .filter(token => !hideSmallAssets || parseFloat(token.currencyAmount) >= 1)
@@ -830,7 +842,7 @@ export default function ControlPage() {
                             <div className="text-right">
                               <div>{formatNumber(parseFloat(token.coinAmount))} {token.tokenSymbol}</div>
                               <div className="text-xs text-zinc-500">
-                                ${formatNumber(parseFloat(token.currencyAmount))}
+                                ${formatNumber(parseFloat(token.currencyAmount), 2)}
                               </div>
                             </div>
                           </div>
@@ -853,21 +865,17 @@ export default function ControlPage() {
               <div className="flex justify-between items-center mb-2">
                 <div className="flex items-center gap-2">
                   <span className="font-medium">{investment.investmentName}</span>
-                  <span className={`text-xs px-1.5 py-0.5 rounded ${
-                    investment.investName === 'Borrow'
-                      ? 'bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400'
-                      : 'bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-400'
-                  }`}>
+                  <span className="text-xs px-1.5 py-0.5 rounded bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-400">
                     {investment.investName}
                   </span>
                 </div>
                 <span className="font-medium">
-                  ${formatNumber(parseFloat(investment.totalValue))}
+                  ${formatNumber(parseFloat(investment.totalValue), 2)}
                 </span>
               </div>
 
               {/* Основные активы */}
-              <div className="space-y-2 mb-2">
+              <div className="space-y-2">
                 {investment.assetsTokenList
                   .filter(token => !hideSmallAssets || parseFloat(token.currencyAmount) >= 1)
                   .map((token, tokenIndex) => (
@@ -885,17 +893,29 @@ export default function ControlPage() {
                       <div className="text-right">
                         <div>{formatNumber(parseFloat(token.coinAmount))} {token.tokenSymbol}</div>
                         <div className="text-xs text-zinc-500">
-                          ${formatNumber(parseFloat(token.currencyAmount))}
+                          ${formatNumber(parseFloat(token.currencyAmount), 2)}
                         </div>
                       </div>
                     </div>
                   ))}
+                {hideSmallAssets && investment.assetsTokenList.filter(token => parseFloat(token.currencyAmount) < 1).length > 0 && (
+                  <div className="text-xs text-zinc-500 mt-1">
+                    {investment.assetsTokenList.filter(token => parseFloat(token.currencyAmount) < 1).length} asset{investment.assetsTokenList.filter(token => parseFloat(token.currencyAmount) < 1).length !== 1 ? 's' : ''} &lt;$1 hidden
+                  </div>
+                )}
               </div>
 
               {/* Награды */}
               {investment.rewardDefiTokenInfo?.[0]?.baseDefiTokenInfos?.length > 0 && (
                 <div className="mt-2 pt-2 border-t border-zinc-200 dark:border-zinc-700">
-                  <div className="text-sm font-medium mb-2">Rewards</div>
+                  <div className="flex justify-between items-center mb-2">
+                    <div className="text-sm font-medium">Rewards</div>
+                    {hideSmallAssets && investment.rewardDefiTokenInfo[0].baseDefiTokenInfos.filter(token => parseFloat(token.currencyAmount) < 1).length > 0 && (
+                      <div className="text-xs text-zinc-500">
+                        {investment.rewardDefiTokenInfo[0].baseDefiTokenInfos.filter(token => parseFloat(token.currencyAmount) < 1).length} reward{investment.rewardDefiTokenInfo[0].baseDefiTokenInfos.filter(token => parseFloat(token.currencyAmount) < 1).length !== 1 ? 's' : ''} &lt;$1 hidden
+                      </div>
+                    )}
+                  </div>
                   <div className="space-y-2">
                     {investment.rewardDefiTokenInfo[0].baseDefiTokenInfos
                       .filter(token => !hideSmallAssets || parseFloat(token.currencyAmount) >= 1)
@@ -914,7 +934,7 @@ export default function ControlPage() {
                           <div className="text-right">
                             <div>{formatNumber(parseFloat(token.coinAmount))} {token.tokenSymbol}</div>
                             <div className="text-xs text-zinc-500">
-                              ${formatNumber(parseFloat(token.currencyAmount))}
+                              ${formatNumber(parseFloat(token.currencyAmount), 2)}
                             </div>
                           </div>
                         </div>
@@ -924,16 +944,10 @@ export default function ControlPage() {
               )}
             </div>
           ))}
-        {/* Кнопка сбора наград для Navi */}
-        {platformId === 115572 && naviData.rewards.length > 0 && (
-          <Button
-            variant="outline"
-            size="sm"
-            className="w-full text-emerald-600 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800 hover:bg-emerald-100 dark:hover:bg-emerald-800/50"
-            onClick={handleNaviCollect}
-          >
-            Collect Navi rewards
-          </Button>
+        {hideSmallAssets && investments.filter(investment => parseFloat(investment.totalValue) < 1).length > 0 && (
+          <div className="text-xs text-zinc-500 mt-1 pl-3">
+            {investments.filter(investment => parseFloat(investment.totalValue) < 1).length} position{investments.filter(investment => parseFloat(investment.totalValue) < 1).length !== 1 ? 's' : ''} &lt;$1 hidden
+          </div>
         )}
       </div>
     );
