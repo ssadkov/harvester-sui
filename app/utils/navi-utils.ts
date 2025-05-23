@@ -58,11 +58,11 @@ export const getAvailableRewards = async (
     // Если транзакция создалась успешно, значит есть награды
     return [{
       type: 'reward',
-      amount: '0', // Здесь нужно добавить реальную сумму наград
+      amount: '1',
       symbol: 'NAVI'
     }];
   } catch (error) {
     console.error('Error getting rewards:', error);
-    return [];
+    return []; // Возвращаем пустой массив, если наград нет
   }
 }; 

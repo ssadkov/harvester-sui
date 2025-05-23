@@ -698,13 +698,15 @@ export default function ControlPage() {
     if (!wallet.account) return;
     
     try {
+      console.log('Checking Navi rewards...');
       setNaviData(prev => ({ ...prev, isLoading: true }));
       
       const client = initNaviSDK();
       const rewards = await getAvailableRewards(client, wallet.account.address);
       
       console.log('Navi rewards:', rewards);
-      setNaviData({ rewards: rewards ? [rewards] : [], isLoading: false });
+      console.log('Navi rewards length:', rewards.length);
+      setNaviData({ rewards: rewards || [], isLoading: false });
     } catch (error) {
       console.error('Error checking Navi rewards:', error);
       setNaviData(prev => ({ ...prev, isLoading: false }));
@@ -852,9 +854,21 @@ export default function ControlPage() {
                 )}
               </div>
             ))}
+          {hideSmallAssets && investments.filter(investment => parseFloat(investment.totalValue) < 1).length > 0 && (
+            <div className="text-xs text-zinc-500 mt-1 pl-3">
+              {investments.filter(investment => parseFloat(investment.totalValue) < 1).length} position{investments.filter(investment => parseFloat(investment.totalValue) < 1).length !== 1 ? 's' : ''} &lt;$1 hidden
+            </div>
+          )}
         </div>
       );
     }
+
+    // Проверяем наличие наград Momentum
+    const hasMomentumRewards = investments.some(investment => 
+      investment.rewardDefiTokenInfo?.[0]?.baseDefiTokenInfos?.some(token => 
+        parseFloat(token.currencyAmount) > 0
+      )
+    );
 
     return (
       <div className="space-y-3">
@@ -949,6 +963,60 @@ export default function ControlPage() {
             {investments.filter(investment => parseFloat(investment.totalValue) < 1).length} position{investments.filter(investment => parseFloat(investment.totalValue) < 1).length !== 1 ? 's' : ''} &lt;$1 hidden
           </div>
         )}
+
+        {/* Кнопка сбора наград Momentum */}
+        {platform.platformName === 'Momentum' && hasMomentumRewards && (
+          <Button
+            variant="outline"
+            size="sm"
+            className="w-full text-emerald-600 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800 hover:bg-emerald-100 dark:hover:bg-emerald-800/50"
+            onClick={async () => {
+              try {
+                if (!wallet.account) {
+                  alert("Please connect your wallet first");
+                  return;
+                }
+
+                console.log('Starting Momentum collect rewards...');
+                
+                const sdk = initMomentumSDK();
+                const tx = await createClaimAllTx(sdk, wallet.account.address);
+                
+                await wallet.signAndExecuteTransaction({
+                  transaction: tx
+                });
+                
+                alert('Successfully collected Momentum rewards!');
+                fetchFinkeeperData();
+              } catch (error) {
+                console.error('Error collecting Momentum rewards:', error);
+                alert('Failed to collect rewards. Please try again.');
+              }
+            }}
+          >
+            Collect Momentum rewards
+          </Button>
+        )}
+
+        {/* Кнопка сбора наград Navi */}
+        {(() => {
+          console.log('Checking Navi button conditions:', {
+            platformName: platform.platformName,
+            platformId: platform.analysisPlatformId,
+            isNavi: platform.platformName === 'NAVI Protocol',
+            isCorrectId: platform.analysisPlatformId === 115572
+          });
+          return platform.platformName === 'NAVI Protocol' && platform.analysisPlatformId === 115572 && (
+            <Button
+              variant="outline"
+              size="sm"
+              className="w-full text-emerald-600 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800 hover:bg-emerald-100 dark:hover:bg-emerald-800/50"
+              onClick={handleNaviCollect}
+            >
+              Collect Navi rewards
+            </Button>
+          );
+        })()}
       </div>
     );
   };
