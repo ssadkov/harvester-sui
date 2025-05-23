@@ -431,11 +431,6 @@ export default function ControlPage() {
       console.log('Final sorted tokens:', sortedTokens);
       setUserTokens(sortedTokens);
 
-      // Загружаем данные Momentum
-      const momentumResult = await fetchMomentumBalance(wallet.account.address);
-      console.log('Momentum API response:', momentumResult);
-      setMomentumData(momentumResult.raw || []);
-
       // Загружаем данные Scallop
       const scallopResult = await fetchScallopBalance(wallet.account.address);
       console.log('Scallop API response:', scallopResult);
@@ -458,11 +453,6 @@ export default function ControlPage() {
     
     setIsLoadingPositions(true);
     try {
-      // Получаем данные Momentum
-      const momentumResult = await fetchMomentumBalance(wallet.account.address);
-      console.log('Momentum API response:', momentumResult);
-      setMomentumData(momentumResult.raw || []);
-
       // Получаем данные Scallop
       const scallopResult = await fetchScallopBalance(wallet.account.address);
       console.log('Scallop API response:', scallopResult);
@@ -472,20 +462,17 @@ export default function ControlPage() {
       await fetchFinkeeperData();
 
       // Проверяем наличие позиций и устанавливаем начальное состояние блоков
-      const hasMomentumPositions = Array.isArray(momentumResult.raw) && momentumResult.raw.length > 0;
       const hasScallopPositions = scallopResult.raw && scallopResult.raw.lendings && scallopResult.raw.lendings.length > 0;
       const hasFinkeeperPositions = finkeeperData?.data?.walletIdPlatformList?.[0]?.platformList?.[0]?.currencyAmount !== undefined;
       
       // Если нет позиций ни в одном протоколе, показываем только Wallet
-      if (!hasMomentumPositions && !hasScallopPositions && !hasFinkeeperPositions) {
+      if (!hasScallopPositions && !hasFinkeeperPositions) {
         setShowTokens(true);
-        setShowMomentum(false);
         setShowScallop(false);
         setShowFinkeeperProtocols({});
       } else {
         // Если есть позиции, сворачиваем все блоки
         setShowTokens(false);
-        setShowMomentum(false);
         setShowScallop(false);
         setShowFinkeeperProtocols({});
       }
@@ -552,7 +539,7 @@ export default function ControlPage() {
         .filter((platform: FinkeeperPlatform) => {
           const amount = parseFloat(platform.currencyAmount || '0');
           console.log(`Platform ${platform.platformName}: amount = ${amount}`);
-          return !['Scallop', 'Momentum'].includes(platform.platformName) && amount > 0;
+          return !['Scallop'].includes(platform.platformName) && amount > 0;
         })
         .sort((a: FinkeeperPlatform, b: FinkeeperPlatform) => 
           parseFloat(b.currencyAmount || '0') - parseFloat(a.currencyAmount || '0')
@@ -680,11 +667,6 @@ export default function ControlPage() {
   useEffect(() => {
     let sum = totalTokenValue;
     
-    // Добавляем сумму из Momentum
-    if (momentumData && Array.isArray(momentumData)) {
-      sum += momentumData.reduce((acc: number, pos: any) => acc + (pos.amount || 0), 0);
-    }
-    
     // Добавляем сумму из Scallop
     if (scallopData && scallopData.lendings) {
       sum += scallopData.lendings.reduce((acc: number, lending: any) => acc + (lending.suppliedValue || 0), 0);
@@ -693,12 +675,12 @@ export default function ControlPage() {
     // Добавляем сумму из Finkeeper
     if (finkeeperData?.data?.walletIdPlatformList?.[0]?.platformList) {
       sum += finkeeperData.data.walletIdPlatformList[0].platformList
-        .filter(platform => !['Scallop', 'Momentum'].includes(platform.platformName))
+        .filter(platform => !['Scallop'].includes(platform.platformName))
         .reduce((acc, platform) => acc + parseFloat(platform.currencyAmount || '0'), 0);
     }
     
     setTotalAssets(sum);
-  }, [totalTokenValue, momentumData, scallopData, finkeeperData]);
+  }, [totalTokenValue, scallopData, finkeeperData]);
 
   // Обновляем общую стоимость токенов при изменении списка токенов
   useEffect(() => {
@@ -1120,117 +1102,6 @@ export default function ControlPage() {
 
               {/* Protocol blocks */}
               {[
-                // Momentum block
-                momentumData && momentumData.length > 0 && {
-                  id: 'momentum',
-                  name: 'Momentum',
-                  logo: 'https://app.mmt.finance/assets/images/momentum-logo-sq.svg',
-                  value: momentumData.reduce((sum: number, pos: any) => sum + (pos.amount || 0), 0),
-                  show: showMomentum,
-                  setShow: setShowMomentum,
-                  content: (
-                    <div className="p-3">
-                      {isLoadingPositions ? (
-                        <div className="flex justify-center py-4">
-                          <span className="text-sm text-zinc-500">Loading positions...</span>
-                        </div>
-                      ) : wallet.connected ? (
-                        momentumData && momentumData.length > 0 ? (
-                          <div className="space-y-4">
-                            {/* Total Rewards and Claim Button */}
-                            {momentumData.some((pos: any) => pos.claimableRewards > 0) && (
-                              <div className="flex items-center justify-between p-2 rounded-lg bg-emerald-50 dark:bg-emerald-900/20">
-                                <div className="flex items-center gap-2">
-                                  <Gift className="h-4 w-4 text-emerald-500" />
-                                  <span className="text-sm text-emerald-600 dark:text-emerald-400">
-                                    Total Rewards: ${formatNumber(momentumData.reduce((sum: number, pos: any) => sum + (pos.claimableRewards || 0), 0))}
-                                  </span>
-                                </div>
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  className="text-emerald-600 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800 hover:bg-emerald-100 dark:hover:bg-emerald-800/50"
-                                  onClick={async () => {
-                                    if (!wallet.account) return;
-                                    try {
-                                      const sdk = initMomentumSDK();
-                                      const tx = await createClaimAllTx(sdk, wallet.account.address);
-                                      await wallet.signAndExecuteTransactionBlock({
-                                        transactionBlock: tx as any,
-                                      });
-                                      // Обновляем данные после успешной транзакции
-                                      fetchUserPositions();
-                                    } catch (error) {
-                                      console.error('Error claiming rewards:', error);
-                                    }
-                                  }}
-                                >
-                                  Claim All
-                                </Button>
-                              </div>
-                            )}
-
-                            {/* Positions List */}
-                            <div className="space-y-2">
-                              {momentumData.map((position: any, index: number) => (
-                                <div key={index} className="p-3 rounded-lg bg-zinc-50 dark:bg-zinc-800/50">
-                                  <div className="text-sm space-y-2">
-                                    <div className="flex justify-between items-center">
-                                      <span className="font-medium">Pool:</span>
-                                      <span className="text-zinc-900 dark:text-zinc-100">
-                                        {position.token0Symbol}/{position.token1Symbol}
-                                      </span>
-                                    </div>
-                                    <div className="flex justify-between">
-                                      <span>Value:</span>
-                                      <span className="font-medium">${formatNumber(position.amount)}</span>
-                                    </div>
-                                    <div className="flex justify-between">
-                                      <span>Status:</span>
-                                      <span className="font-medium">{position.status}</span>
-                                    </div>
-                                    <div className="flex justify-between">
-                                      <span>Price Range:</span>
-                                      <span className="font-medium">
-                                        ${formatNumber(position.lowerPrice)} - ${formatNumber(position.upperPrice)}
-                                      </span>
-                                    </div>
-                                    {position.claimableRewards > 0 && (
-                                      <div className="flex justify-between text-emerald-600">
-                                        <span>Rewards:</span>
-                                        <span className="font-medium">${formatNumber(position.claimableRewards)}</span>
-                                      </div>
-                                    )}
-                                    {(position.feeAmountXUsd > 0 || position.feeAmountYUsd > 0) && (
-                                      <div className="flex justify-between text-blue-600">
-                                        <span>Fees:</span>
-                                        <span className="font-medium">
-                                          ${formatNumber(position.feeAmountXUsd + position.feeAmountYUsd)}
-                                        </span>
-                                      </div>
-                                    )}
-                                    <div className="text-xs text-zinc-500 mt-1">
-                                      <div>Position ID: {position.objectId.substring(0, 10)}...</div>
-                                      <div>Pool ID: {position.poolId.substring(0, 10)}...</div>
-                                    </div>
-                                  </div>
-                                </div>
-                              ))}
-                            </div>
-                          </div>
-                        ) : (
-                          <div className="text-center py-4 text-sm text-zinc-500">
-                            No active positions
-                          </div>
-                        )
-                      ) : (
-                        <div className="text-center py-4 text-sm text-zinc-500">
-                          Connect wallet to view positions
-                        </div>
-                      )}
-                    </div>
-                  )
-                },
                 // Scallop block
                 scallopData && scallopData.lendings && scallopData.lendings.length > 0 && {
                   id: 'scallop',
@@ -1279,7 +1150,7 @@ export default function ControlPage() {
                 // Finkeeper blocks
                 ...(finkeeperData?.data?.walletIdPlatformList?.[0]?.platformList
                   ?.filter(platform => 
-                    !['Scallop', 'Momentum'].includes(platform.platformName) && 
+                    !['Scallop'].includes(platform.platformName) && 
                     parseFloat(platform.currencyAmount || '0') > 0
                   )
                   .map(platform => ({
@@ -1424,19 +1295,13 @@ export default function ControlPage() {
                 )}
 
                 {/* График распределения по протоколам */}
-                {(momentumData?.length > 0 || scallopData?.lendings?.length > 0 || (finkeeperData?.data?.walletIdPlatformList?.[0]?.platformList?.length ?? 0) > 0) && (
+                {(scallopData?.lendings?.length > 0 || (finkeeperData?.data?.walletIdPlatformList?.[0]?.platformList?.length ?? 0) > 0) && (
                   <div>
                     <h3 className="text-lg font-medium text-zinc-900 dark:text-zinc-100 mb-4">
                       Protocol Distribution
                     </h3>
                     <ProtocolPieChart 
                       protocolBalances={[
-                        ...(momentumData?.length > 0 ? [{
-                          protocol: 'Momentum',
-                          value: momentumData.reduce((sum: number, pos: any) => sum + (pos.amount || 0), 0),
-                          icon: 'https://app.mmt.finance/assets/images/momentum-logo-sq.svg',
-                          color: protocolColors[0]
-                        }] : []),
                         ...(scallopData?.lendings?.length > 0 ? [{
                           protocol: 'Scallop',
                           value: scallopData.lendings.reduce((sum: number, lending: any) => sum + (lending.suppliedValue || 0), 0),
@@ -1445,7 +1310,7 @@ export default function ControlPage() {
                         }] : []),
                         ...(finkeeperData?.data?.walletIdPlatformList?.[0]?.platformList
                           ?.filter((platform: FinkeeperPlatform) => 
-                            !['Scallop', 'Momentum'].includes(platform.platformName) && 
+                            !['Scallop'].includes(platform.platformName) && 
                             parseFloat(platform.currencyAmount || '0') > 0
                           )
                           .map((platform: FinkeeperPlatform, index: number) => ({
