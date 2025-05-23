@@ -431,11 +431,6 @@ export default function ControlPage() {
       console.log('Final sorted tokens:', sortedTokens);
       setUserTokens(sortedTokens);
 
-      // Загружаем данные Scallop
-      const scallopResult = await fetchScallopBalance(wallet.account.address);
-      console.log('Scallop API response:', scallopResult);
-      setScallopData(scallopResult.raw || null);
-
       // Загружаем данные Finkeeper
       await fetchFinkeeperData();
 
@@ -453,27 +448,19 @@ export default function ControlPage() {
     
     setIsLoadingPositions(true);
     try {
-      // Получаем данные Scallop
-      const scallopResult = await fetchScallopBalance(wallet.account.address);
-      console.log('Scallop API response:', scallopResult);
-      setScallopData(scallopResult.raw || null);
-
       // Получаем данные Finkeeper
       await fetchFinkeeperData();
 
       // Проверяем наличие позиций и устанавливаем начальное состояние блоков
-      const hasScallopPositions = scallopResult.raw && scallopResult.raw.lendings && scallopResult.raw.lendings.length > 0;
       const hasFinkeeperPositions = finkeeperData?.data?.walletIdPlatformList?.[0]?.platformList?.[0]?.currencyAmount !== undefined;
       
       // Если нет позиций ни в одном протоколе, показываем только Wallet
-      if (!hasScallopPositions && !hasFinkeeperPositions) {
+      if (!hasFinkeeperPositions) {
         setShowTokens(true);
-        setShowScallop(false);
         setShowFinkeeperProtocols({});
       } else {
         // Если есть позиции, сворачиваем все блоки
         setShowTokens(false);
-        setShowScallop(false);
         setShowFinkeeperProtocols({});
       }
     } catch (error) {
@@ -504,8 +491,8 @@ export default function ControlPage() {
         body: JSON.stringify({
           walletAddressList: [
             {
-              chainId: 784,
-              walletAddress: wallet.account.address
+            chainId: 784,
+            walletAddress: wallet.account.address
             }
           ]
         })
@@ -538,8 +525,8 @@ export default function ControlPage() {
       const filteredPlatforms = walletPlatforms.platformList
         .filter((platform: FinkeeperPlatform) => {
           const amount = parseFloat(platform.currencyAmount || '0');
-          console.log(`Platform ${platform.platformName}: amount = ${amount}`);
-          return !['Scallop'].includes(platform.platformName) && amount > 0;
+          console.log(`Platform ${platform.platformName}: amount = ${amount}, platformId = ${platform.analysisPlatformId}`);
+          return amount > 0;
         })
         .sort((a: FinkeeperPlatform, b: FinkeeperPlatform) => 
           parseFloat(b.currencyAmount || '0') - parseFloat(a.currencyAmount || '0')
@@ -667,20 +654,14 @@ export default function ControlPage() {
   useEffect(() => {
     let sum = totalTokenValue;
     
-    // Добавляем сумму из Scallop
-    if (scallopData && scallopData.lendings) {
-      sum += scallopData.lendings.reduce((acc: number, lending: any) => acc + (lending.suppliedValue || 0), 0);
-    }
-    
     // Добавляем сумму из Finkeeper
     if (finkeeperData?.data?.walletIdPlatformList?.[0]?.platformList) {
       sum += finkeeperData.data.walletIdPlatformList[0].platformList
-        .filter(platform => !['Scallop'].includes(platform.platformName))
         .reduce((acc, platform) => acc + parseFloat(platform.currencyAmount || '0'), 0);
     }
     
     setTotalAssets(sum);
-  }, [totalTokenValue, scallopData, finkeeperData]);
+  }, [totalTokenValue, finkeeperData]);
 
   // Обновляем общую стоимость токенов при изменении списка токенов
   useEffect(() => {
@@ -744,6 +725,12 @@ export default function ControlPage() {
     const error = finkeeperErrors[platformId];
     const investments = getDetailData(platformId);
 
+    console.log(`Rendering details for platform ${platform.platformName} (ID: ${platformId}):`, {
+      isLoading,
+      error,
+      investmentsCount: investments?.length
+    });
+
     if (isLoading) {
       return (
         <div className="flex justify-center py-4">
@@ -771,6 +758,88 @@ export default function ControlPage() {
       return (
         <div className="text-center py-4 text-sm text-zinc-500">
           No active positions
+        </div>
+      );
+    }
+
+    // Специальная обработка для Scallop
+    if (platform.platformName === 'Scallop') {
+      return (
+        <div className="space-y-3">
+          {investments
+            .filter(investment => !hideSmallAssets || parseFloat(investment.totalValue) >= 1)
+            .map((investment: FinkeeperInvestment, index: number) => (
+              <div key={index} className="p-3 rounded-lg bg-zinc-50 dark:bg-zinc-800/50">
+                <div className="flex justify-between items-center mb-2">
+                  <div className="flex items-center gap-2">
+                    <span className="font-medium">{investment.investmentName}</span>
+                    <span className="text-xs px-1.5 py-0.5 rounded bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-400">
+                      {investment.investName}
+                    </span>
+                  </div>
+                  <span className="font-medium">
+                    ${formatNumber(parseFloat(investment.totalValue))}
+                  </span>
+                </div>
+
+                {/* Основные активы */}
+                <div className="space-y-2">
+                  {investment.assetsTokenList
+                    .filter(token => !hideSmallAssets || parseFloat(token.currencyAmount) >= 1)
+                    .map((token, tokenIndex) => (
+                      <div key={tokenIndex} className="flex justify-between items-center text-sm">
+                        <div className="flex items-center gap-2">
+                          <Image
+                            src={token.tokenLogo}
+                            alt={token.tokenSymbol}
+                            width={16}
+                            height={16}
+                            className="rounded"
+                          />
+                          <span>{token.tokenSymbol}</span>
+                        </div>
+                        <div className="text-right">
+                          <div>{formatNumber(parseFloat(token.coinAmount))} {token.tokenSymbol}</div>
+                          <div className="text-xs text-zinc-500">
+                            ${formatNumber(parseFloat(token.currencyAmount))}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                </div>
+
+                {/* Награды */}
+                {investment.rewardDefiTokenInfo?.[0]?.baseDefiTokenInfos?.length > 0 && (
+                  <div className="mt-2 pt-2 border-t border-zinc-200 dark:border-zinc-700">
+                    <div className="text-sm font-medium mb-2">Rewards</div>
+                    <div className="space-y-2">
+                      {investment.rewardDefiTokenInfo[0].baseDefiTokenInfos
+                        .filter(token => !hideSmallAssets || parseFloat(token.currencyAmount) >= 1)
+                        .map((token, tokenIndex) => (
+                          <div key={tokenIndex} className="flex justify-between items-center text-sm">
+                            <div className="flex items-center gap-2">
+                              <Image
+                                src={token.tokenLogo}
+                                alt={token.tokenSymbol}
+                                width={16}
+                                height={16}
+                                className="rounded"
+                              />
+                              <span>{token.tokenSymbol}</span>
+                            </div>
+                            <div className="text-right">
+                              <div>{formatNumber(parseFloat(token.coinAmount))} {token.tokenSymbol}</div>
+                              <div className="text-xs text-zinc-500">
+                                ${formatNumber(parseFloat(token.currencyAmount))}
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            ))}
         </div>
       );
     }
@@ -1102,57 +1171,13 @@ export default function ControlPage() {
 
               {/* Protocol blocks */}
               {[
-                // Scallop block
-                scallopData && scallopData.lendings && scallopData.lendings.length > 0 && {
-                  id: 'scallop',
-                  name: 'Scallop',
-                  logo: 'https://app.scallop.io/images/logo-192.png',
-                  value: scallopData.lendings.reduce((sum: number, lending: any) => sum + (lending.suppliedValue || 0), 0),
-                  show: showScallop,
-                  setShow: setShowScallop,
-                  content: (
-                    <div className="p-3">
-                      {isLoadingPositions ? (
-                        <div className="flex justify-center py-4">
-                          <span className="text-sm text-zinc-500">Loading positions...</span>
-                        </div>
-                      ) : wallet.connected ? (
-                        scallopData && scallopData.lendings && scallopData.lendings.length > 0 ? (
-                          <div className="space-y-2">
-                            {scallopData.lendings.map((lending: any, index: number) => (
-                              <div key={index} className="p-2 rounded-lg bg-zinc-50 dark:bg-zinc-800/50">
-                                <div className="text-sm">
-                                  <div className="flex justify-between">
-                                    <span>{lending.symbol}:</span>
-                                    <span className="font-medium">${formatNumber(lending.suppliedValue)}</span>
-                                  </div>
-                                  <div className="flex justify-between text-green-600">
-                                    <span>APY:</span>
-                                    <span className="font-medium">{formatNumber(lending.supplyApy)}%</span>
-                                  </div>
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                        ) : (
-                          <div className="text-center py-4 text-sm text-zinc-500">
-                            No active positions
-                          </div>
-                        )
-                      ) : (
-                        <div className="text-center py-4 text-sm text-zinc-500">
-                          Connect wallet to view positions
-                        </div>
-                      )}
-                    </div>
-                  )
-                },
                 // Finkeeper blocks
                 ...(finkeeperData?.data?.walletIdPlatformList?.[0]?.platformList
-                  ?.filter(platform => 
-                    !['Scallop'].includes(platform.platformName) && 
-                    parseFloat(platform.currencyAmount || '0') > 0
-                  )
+                  ?.filter(platform => {
+                    const amount = parseFloat(platform.currencyAmount || '0');
+                    console.log(`Rendering platform ${platform.platformName}: amount = ${amount}, platformId = ${platform.analysisPlatformId}`);
+                    return amount > 0;
+                  })
                   .map(platform => ({
                     id: platform.analysisPlatformId.toString(),
                     name: platform.platformName,
@@ -1295,29 +1320,22 @@ export default function ControlPage() {
                 )}
 
                 {/* График распределения по протоколам */}
-                {(scallopData?.lendings?.length > 0 || (finkeeperData?.data?.walletIdPlatformList?.[0]?.platformList?.length ?? 0) > 0) && (
+                {(finkeeperData?.data?.walletIdPlatformList?.[0]?.platformList?.length ?? 0) > 0 && (
                   <div>
                     <h3 className="text-lg font-medium text-zinc-900 dark:text-zinc-100 mb-4">
                       Protocol Distribution
                     </h3>
                     <ProtocolPieChart 
                       protocolBalances={[
-                        ...(scallopData?.lendings?.length > 0 ? [{
-                          protocol: 'Scallop',
-                          value: scallopData.lendings.reduce((sum: number, lending: any) => sum + (lending.suppliedValue || 0), 0),
-                          icon: 'https://app.scallop.io/images/logo-192.png',
-                          color: protocolColors[1]
-                        }] : []),
                         ...(finkeeperData?.data?.walletIdPlatformList?.[0]?.platformList
                           ?.filter((platform: FinkeeperPlatform) => 
-                            !['Scallop'].includes(platform.platformName) && 
                             parseFloat(platform.currencyAmount || '0') > 0
                           )
                           .map((platform: FinkeeperPlatform, index: number) => ({
                             protocol: platform.platformName,
                             value: parseFloat(platform.currencyAmount || '0'),
                             icon: platform.platformLogo,
-                            color: protocolColors[(index + 2) % protocolColors.length]
+                            color: protocolColors[index % protocolColors.length]
                           })) || [])
                       ]}
                     />
