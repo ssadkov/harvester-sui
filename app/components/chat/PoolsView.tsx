@@ -3,8 +3,18 @@
 import { ProcessedPool } from '@/utils/poolUtils';
 import Image from 'next/image';
 import Link from 'next/link';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { getPoolConfig } from '@/app/utils/navi-utils';
+import { SupplyModal } from './SupplyModal';
+import { useWallet } from '@suiet/wallet-kit';
+
+interface TokenData {
+  totalBalance: string;
+  decimals: number;
+  iconUrl?: string;
+  price?: string;
+  symbol: string;
+}
 
 interface PoolsViewProps {
   message: string;
@@ -28,7 +38,52 @@ const protocolLinks: { [key: string]: string } = {
 type PoolType = 'stable' | 'risk' | 'lending';
 
 export function PoolsView({ message, pools }: PoolsViewProps) {
+  const wallet = useWallet();
   const [selectedType, setSelectedType] = useState<PoolType>('stable');
+  const [selectedPool, setSelectedPool] = useState<ProcessedPool | null>(null);
+  const [isSupplyModalOpen, setIsSupplyModalOpen] = useState(false);
+  const [tokenBalance, setTokenBalance] = useState<number>(0);
+  const [tokenIcon, setTokenIcon] = useState<string>('');
+  const [tokenPrice, setTokenPrice] = useState<number>(0);
+
+  // Функция для получения баланса токена
+  const fetchTokenBalance = async (symbol: string) => {
+    if (!wallet.connected || !wallet.account) return;
+
+    try {
+      const response = await fetch(`/api/tokens?address=${wallet.account.address}`);
+      const data = await response.json();
+      
+      // Ищем токен по символу
+      const token = Object.values(data).find((t: unknown) => {
+        const tokenData = t as TokenData;
+        return tokenData.symbol?.toUpperCase() === symbol.toUpperCase();
+      }) as TokenData | undefined;
+
+      if (token) {
+        const balance = parseFloat(token.totalBalance) / Math.pow(10, token.decimals);
+        setTokenBalance(balance);
+        setTokenIcon(token.iconUrl || '');
+        setTokenPrice(parseFloat(token.price || '0'));
+      } else {
+        setTokenBalance(0);
+        setTokenIcon('');
+        setTokenPrice(0);
+      }
+    } catch (error) {
+      console.error('Error fetching token balance:', error);
+      setTokenBalance(0);
+      setTokenIcon('');
+      setTokenPrice(0);
+    }
+  };
+
+  // Обновляем баланс при выборе пула
+  useEffect(() => {
+    if (selectedPool) {
+      fetchTokenBalance(selectedPool.tokens[0]);
+    }
+  }, [selectedPool, wallet.connected, wallet.account]);
 
   const filteredPools = pools.filter(pool => {
     // Filter by TVL first
@@ -192,17 +247,8 @@ export function PoolsView({ message, pools }: PoolsViewProps) {
                   {pool.protocol.toLowerCase() === 'navi' && (
                     <button
                       onClick={() => {
-                        const poolConfig = getPoolConfig(pool.tokens[0]);
-                        console.log('Pool Config:', poolConfig);
-                        alert(JSON.stringify({
-                          pool: pool.tokens.join(' / '),
-                          apr: (pool.totalApr * 100).toFixed(2) + '%',
-                          type: pool.type,
-                          tvl: pool.tvl,
-                          volume24h: pool.volume_24,
-                          fees24h: pool.fees_24,
-                          poolConfig
-                        }, null, 2));
+                        setSelectedPool(pool);
+                        setIsSupplyModalOpen(true);
                       }}
                       className="ml-2 px-2 py-1 text-xs bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors"
                     >
@@ -222,6 +268,21 @@ export function PoolsView({ message, pools }: PoolsViewProps) {
           {getTabFooterDescription(selectedType)}
         </div>
       </div>
+
+      {selectedPool && (
+        <SupplyModal
+          isOpen={isSupplyModalOpen}
+          onClose={() => {
+            setIsSupplyModalOpen(false);
+            setSelectedPool(null);
+          }}
+          tokenSymbol={selectedPool.tokens[0]}
+          apr={selectedPool.totalApr * 100}
+          balance={tokenBalance}
+          tokenIcon={tokenIcon}
+          price={tokenPrice}
+        />
+      )}
     </div>
   );
 } 
