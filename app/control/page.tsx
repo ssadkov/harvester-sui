@@ -722,6 +722,12 @@ export default function ControlPage() {
   }, [wallet.connected, wallet.account]);
 
   // Обновляем обработку отображения деталей протокола
+  const [selectedProtocol, setSelectedProtocol] = useState<{
+    name: string;
+    logo: string;
+    investments: FinkeeperInvestment[];
+  } | null>(null);
+
   const renderProtocolDetails = (platform: FinkeeperPlatform) => {
     const platformId = platform.analysisPlatformId;
     const isLoading = isLoadingFinkeeperDetail[platformId];
@@ -860,6 +866,20 @@ export default function ControlPage() {
               {investments.filter(investment => parseFloat(investment.totalValue) < 1).length} position{investments.filter(investment => parseFloat(investment.totalValue) < 1).length !== 1 ? 's' : ''} &lt;$1 hidden
             </div>
           )}
+
+          {/* Кнопка для просмотра деталей в основном экране */}
+          <Button
+            variant="outline"
+            size="sm"
+            className="w-full"
+            onClick={() => setSelectedProtocol({
+              name: platform.platformName,
+              logo: platform.platformLogo,
+              investments: investments
+            })}
+          >
+            View Details
+          </Button>
         </div>
       );
     }
@@ -1018,6 +1038,279 @@ export default function ControlPage() {
             </Button>
           );
         })()}
+
+        {/* Кнопка для просмотра деталей в основном экране */}
+        <Button
+          variant="outline"
+          size="sm"
+          className="w-full"
+          onClick={() => setSelectedProtocol({
+            name: platform.platformName,
+            logo: platform.platformLogo,
+            investments: investments
+          })}
+        >
+          View Details
+        </Button>
+      </div>
+    );
+  };
+
+  const renderMainContent = () => {
+    if (selectedProtocol) {
+      return (
+        <div>
+          <div className="flex items-center justify-between mb-6">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 relative rounded-full overflow-hidden bg-zinc-100 dark:bg-zinc-800">
+                <Image
+                  src={selectedProtocol.logo}
+                  alt={selectedProtocol.name}
+                  width={40}
+                  height={40}
+                  className="object-contain"
+                />
+              </div>
+              <div className="flex items-center gap-4">
+                <div>
+                  <h1 className="text-2xl font-bold text-zinc-900 dark:text-zinc-100">
+                    {selectedProtocol.name}
+                  </h1>
+                  <a 
+                    href={selectedProtocol.name === 'NAVI Protocol' ? 'https://naviprotocol.io/' : 
+                          selectedProtocol.name === 'Momentum' ? 'https://momentum.xyz/' :
+                          selectedProtocol.name === 'Scallop' ? 'https://scallop.io/' : '#'}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-sm text-blue-600 dark:text-blue-400 hover:underline"
+                  >
+                    Visit protocol website
+                  </a>
+                </div>
+
+                {/* Кнопки сбора наград */}
+                {selectedProtocol.name === 'NAVI Protocol' && (
+                  <Button
+                    variant="outline"
+                    className="text-emerald-600 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800 hover:bg-emerald-100 dark:hover:bg-emerald-800/50"
+                    onClick={handleNaviCollect}
+                  >
+                    Collect Navi rewards
+                  </Button>
+                )}
+
+                {selectedProtocol.name === 'Momentum' && (
+                  <Button
+                    variant="outline"
+                    className="text-emerald-600 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800 hover:bg-emerald-100 dark:hover:bg-emerald-800/50"
+                    onClick={async () => {
+                      try {
+                        if (!wallet.account) {
+                          alert("Please connect your wallet first");
+                          return;
+                        }
+
+                        console.log('Starting Momentum collect rewards...');
+                        
+                        const sdk = initMomentumSDK();
+                        const tx = await createClaimAllTx(sdk, wallet.account.address);
+                        
+                        await wallet.signAndExecuteTransaction({
+                          transaction: tx
+                        });
+                        
+                        alert('Successfully collected Momentum rewards!');
+                        fetchFinkeeperData();
+                      } catch (error) {
+                        console.error('Error collecting Momentum rewards:', error);
+                        alert('Failed to collect rewards. Please try again.');
+                      }
+                    }}
+                  >
+                    Collect Momentum rewards
+                  </Button>
+                )}
+              </div>
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setSelectedProtocol(null)}
+            >
+              <ChevronLeft className="h-4 w-4 mr-2" />
+              Back
+            </Button>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {selectedProtocol.investments.map((investment, index) => (
+              <div key={index} className="p-4 rounded-lg bg-white dark:bg-zinc-800 shadow-sm border border-zinc-200 dark:border-zinc-700">
+                <div className="flex justify-between items-center mb-4">
+                  <div className="flex items-center gap-2">
+                    <span className="font-medium">{investment.investmentName}</span>
+                    <span className="text-xs px-1.5 py-0.5 rounded bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-400">
+                      {investment.investName}
+                    </span>
+                  </div>
+                  <span className="font-medium">
+                    ${formatNumber(parseFloat(investment.totalValue), 2)}
+                  </span>
+                </div>
+
+                {/* Основные активы */}
+                <div className="space-y-2 mb-4">
+                  <div className="text-sm font-medium text-zinc-500 mb-2">Assets</div>
+                  {investment.assetsTokenList.map((token, tokenIndex) => (
+                    <div key={tokenIndex} className="flex justify-between items-center text-sm p-2 rounded-lg bg-zinc-50 dark:bg-zinc-800/50">
+                      <div className="flex items-center gap-2">
+                        <Image
+                          src={token.tokenLogo}
+                          alt={token.tokenSymbol}
+                          width={16}
+                          height={16}
+                          className="rounded"
+                        />
+                        <span>{token.tokenSymbol}</span>
+                      </div>
+                      <div className="text-right">
+                        <div>{formatNumber(parseFloat(token.coinAmount))} {token.tokenSymbol}</div>
+                        <div className="text-xs text-zinc-500">
+                          ${formatNumber(parseFloat(token.currencyAmount), 2)}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Награды */}
+                {investment.rewardDefiTokenInfo?.[0]?.baseDefiTokenInfos?.length > 0 && (
+                  <div className="space-y-2">
+                    <div className="text-sm font-medium text-zinc-500 mb-2">Rewards</div>
+                    {investment.rewardDefiTokenInfo[0].baseDefiTokenInfos.map((token, tokenIndex) => (
+                      <div key={tokenIndex} className="flex justify-between items-center text-sm p-2 rounded-lg bg-zinc-50 dark:bg-zinc-800/50">
+                        <div className="flex items-center gap-2">
+                          <Image
+                            src={token.tokenLogo}
+                            alt={token.tokenSymbol}
+                            width={16}
+                            height={16}
+                            className="rounded"
+                          />
+                          <span>{token.tokenSymbol}</span>
+                        </div>
+                        <div className="text-right">
+                          <div>{formatNumber(parseFloat(token.coinAmount))} {token.tokenSymbol}</div>
+                          <div className="text-xs text-zinc-500">
+                            ${formatNumber(parseFloat(token.currencyAmount), 2)}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      );
+    }
+
+    if (selectedAsset && selectedAsset.type === 'token') {
+      return (
+        <div>
+          <div className="flex items-center justify-between mb-6">
+            <div className="flex items-center gap-3">
+              {selectedAsset.logo ? (
+                <div className="w-10 h-10 relative rounded-full overflow-hidden bg-zinc-100 dark:bg-zinc-800">
+                  <Image
+                    src={selectedAsset.logo}
+                    alt={selectedAsset.name}
+                    fill
+                    className="object-contain"
+                  />
+                </div>
+              ) : (
+                <div className="w-10 h-10 rounded-full bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center">
+                  <span className="text-lg font-medium text-zinc-500">
+                    {selectedAsset.name[0]}
+                  </span>
+                </div>
+              )}
+              <div>
+                <h1 className="text-2xl font-bold text-zinc-900 dark:text-zinc-100">
+                  {selectedAsset.name}
+                </h1>
+                <p className="text-sm text-zinc-500">
+                  ${formatNumber(selectedAsset.value)}
+                </p>
+              </div>
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setSelectedAsset(null)}
+            >
+              <ChevronLeft className="h-4 w-4 mr-2" />
+              Back
+            </Button>
+          </div>
+          <TokenPools symbol={selectedAsset.data.symbol} />
+        </div>
+      );
+    }
+
+    return (
+      <div className="space-y-8">
+        {wallet.connected ? (
+          <>
+            <div className="text-center mb-8">
+              <h2 className="text-2xl font-bold mb-4">Select token to discover earning opportunities</h2>
+              <p className="text-zinc-500">
+                Click on any token to see available pools and start earning
+              </p>
+            </div>
+
+            {/* Графики */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="bg-white dark:bg-zinc-800 rounded-lg p-4 shadow-sm">
+                <h3 className="text-lg font-semibold mb-4">Assets Distribution</h3>
+                <PieChartAssets
+                  tokenBalances={userTokens.map(t => ({
+                    symbol: t.symbol,
+                    balance: t.balance,
+                    decimals: t.decimals,
+                    value: parseFloat(t.usdPrice || '0')
+                  }))}
+                />
+              </div>
+              <div className="bg-white dark:bg-zinc-800 rounded-lg p-4 shadow-sm">
+                <h3 className="text-lg font-semibold mb-4">Protocol Distribution</h3>
+                <ProtocolPieChart
+                  protocolBalances={[
+                    { protocol: 'Wallet', value: totalTokenValue },
+                    ...(finkeeperData?.data?.walletIdPlatformList?.[0]?.platformList || [])
+                      .map(p => ({
+                        protocol: p.platformName,
+                        value: parseFloat(p.currencyAmount || '0')
+                      }))
+                  ]}
+                />
+              </div>
+            </div>
+          </>
+        ) : (
+          <div className="text-center mb-8">
+            <h2 className="text-2xl font-bold mb-4">Discover</h2>
+            <p className="text-zinc-500">
+              Connect your wallet to view your tokens and discover earning opportunities
+            </p>
+          </div>
+        )}
+
+        {/* Finkeeper Pools */}
+        <div className="mt-8">
+          <FinkeeperPoolsView />
+        </div>
       </div>
     );
   };
@@ -1162,7 +1455,7 @@ export default function ControlPage() {
               </div>
 
               {/* Wallet section */}
-              <div className="mb-4 border border-zinc-200 dark:border-zinc-700 rounded-lg overflow-hidden">
+              <div className="mb-4 border-2 border-zinc-200 dark:border-zinc-700 rounded-lg overflow-hidden">
                 <div 
                   onClick={() => setShowTokens(!showTokens)}
                   className="flex flex-row items-center justify-between p-3 bg-zinc-50 dark:bg-zinc-900 cursor-pointer hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
@@ -1293,7 +1586,7 @@ export default function ControlPage() {
                 .filter(Boolean)
                 .sort((a, b) => b.value - a.value)
                 .map(protocol => (
-                  <div key={protocol.id} className="mb-4 border border-zinc-200 dark:border-zinc-700 rounded-lg overflow-hidden">
+                  <div key={protocol.id} className="mb-4 border-2 border-zinc-200 dark:border-zinc-700 rounded-lg overflow-hidden">
                     <div 
                       onClick={() => protocol.setShow(!protocol.show)}
                       className="flex flex-row items-center justify-between p-3 bg-zinc-50 dark:bg-zinc-900 cursor-pointer hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
@@ -1345,100 +1638,7 @@ export default function ControlPage() {
       {/* Main content area */}
       <div className="flex-grow p-4 overflow-y-auto">
         <div className="max-w-7xl mx-auto">
-          {selectedAsset && selectedAsset.type === 'token' ? (
-            <div>
-              <div className="flex items-center justify-between mb-6">
-                <div className="flex items-center gap-3">
-                  {selectedAsset.logo ? (
-                    <div className="w-10 h-10 relative rounded-full overflow-hidden bg-zinc-100 dark:bg-zinc-800">
-                      <Image
-                        src={selectedAsset.logo}
-                        alt={selectedAsset.name}
-                        fill
-                        className="object-contain"
-                      />
-                    </div>
-                  ) : (
-                    <div className="w-10 h-10 rounded-full bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center">
-                      <span className="text-lg font-medium text-zinc-500">
-                        {selectedAsset.name[0]}
-                      </span>
-                    </div>
-                  )}
-                  <div>
-                    <h1 className="text-2xl font-bold text-zinc-900 dark:text-zinc-100">
-                      {selectedAsset.name}
-                    </h1>
-                    <p className="text-sm text-zinc-500">
-                      ${formatNumber(selectedAsset.value)}
-                    </p>
-                  </div>
-                </div>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setSelectedAsset(null)}
-                >
-                  <ChevronLeft className="h-4 w-4 mr-2" />
-                  Back to overview
-                </Button>
-              </div>
-              <TokenPools symbol={selectedAsset.data.symbol} />
-            </div>
-          ) : (
-            <div className="space-y-8">
-              {wallet.connected ? (
-                <>
-                  <div className="text-center mb-8">
-                    <h2 className="text-2xl font-bold mb-4">Select token to discover earning opportunities</h2>
-                    <p className="text-zinc-500">
-                      Click on any token to see available pools and start earning
-                    </p>
-                  </div>
-
-                  {/* Графики */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="bg-white dark:bg-zinc-800 rounded-lg p-4 shadow-sm">
-                      <h3 className="text-lg font-semibold mb-4">Assets Distribution</h3>
-                      <PieChartAssets
-                        tokenBalances={userTokens.map(t => ({
-                          symbol: t.symbol,
-                          balance: t.balance,
-                          decimals: t.decimals,
-                          value: parseFloat(t.usdPrice || '0')
-                        }))}
-                      />
-                    </div>
-                    <div className="bg-white dark:bg-zinc-800 rounded-lg p-4 shadow-sm">
-                      <h3 className="text-lg font-semibold mb-4">Protocol Distribution</h3>
-                      <ProtocolPieChart
-                        protocolBalances={[
-                          { protocol: 'Wallet', value: totalTokenValue },
-                          ...(finkeeperData?.data?.walletIdPlatformList?.[0]?.platformList || [])
-                            .map(p => ({
-                              protocol: p.platformName,
-                              value: parseFloat(p.currencyAmount || '0')
-                            }))
-                        ]}
-                      />
-                    </div>
-                  </div>
-                </>
-              ) : (
-                <div className="text-center mb-8">
-                  <h2 className="text-2xl font-bold mb-4">Discover</h2>
-                  <p className="text-zinc-500">
-                    Connect your wallet to view your tokens and discover earning opportunities
-                  </p>
-                </div>
-              )}
-
-              {/* Finkeeper Pools */}
-              <div className="mt-8">
-                <FinkeeperPoolsView />
-              </div>
-            </div>
-          )}
+          {renderMainContent()}
         </div>
       </div>
     </div>
