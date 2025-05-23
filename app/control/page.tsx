@@ -285,6 +285,9 @@ export default function ControlPage() {
   const [isLoadingFinkeeperDetail, setIsLoadingFinkeeperDetail] = useState<Record<number, boolean>>({});
   const [finkeeperErrors, setFinkeeperErrors] = useState<Record<number, string>>({});
 
+  const [totalTokenValue, setTotalTokenValue] = useState(0);
+  const [totalAssets, setTotalAssets] = useState(0);
+
   // Преобразуем poolsData в массив пулов
   const filteredPools = poolsData ? Object.entries(poolsData).flatMap(([protocol, pools]) =>
     Object.entries(pools).map(([_, pool]) => ({
@@ -319,68 +322,71 @@ export default function ControlPage() {
 
   // Функция для загрузки активов пользователя
   const fetchUserAssets = async () => {
-    if (!wallet.connected || !wallet.account) {
-      console.log('Wallet not connected or no account');
-      return;
-    }
-    
-    setIsLoadingAssets(true);
-    
     try {
-      const address = wallet.account.address;
-      console.log('Fetching tokens for address:', address);
+      if (!wallet.account) return;
       
-      const url = `/api/tokens?address=${address}`;
-      console.log('Request URL:', url);
+      setIsLoadingAssets(true);
+      console.log('Fetching tokens for address:', wallet.account.address);
       
-      const response = await fetch(url);
+      // Загружаем токены
+      const response = await fetch(`/api/tokens?address=${wallet.account.address}`);
       console.log('Response status:', response.status);
       
       if (!response.ok) {
-        throw new Error(`Failed to fetch tokens: ${response.status}`);
+        throw new Error(`HTTP error! status: ${response.status}`);
       }
       
       const data = await response.json();
       console.log('Raw API response:', data);
-      
-      if (!data || typeof data !== 'object') {
-        console.error('Invalid data format received:', data);
-        throw new Error('Invalid data format received from API');
+
+      if (data.error) {
+        console.log('Processing token: error', data.error);
+        console.log('Processing token: message', data.message);
+        setUserTokens([]);
+        return;
       }
-      
-      // Преобразуем объект в массив токенов
-      const tokensArray = Object.entries(data).map(([id, token]: [string, any]) => {
-        console.log('Processing token:', id, token);
-        const balance = parseFloat(token.totalBalance) / Math.pow(10, token.decimals);
-        const usdPrice = token.price ? balance * parseFloat(token.price) : 0;
+
+      const processedTokens = data.map((token: any) => {
+        console.log('Processing token:', token);
+        const balance = parseFloat(token.balance || '0');
+        const price = parseFloat(token.price || '0');
+        const usdPrice = parseFloat(token.usdPrice || '0');
         
         return {
           ...token,
-          id,
-          balance: balance.toString(),
-          usdPrice: usdPrice.toString(),
-          coinType: id,
-          totalBalance: token.totalBalance,
-          decimals: token.decimals || 0,
-          name: token.name || token.symbol || 'Unknown Token',
-          symbol: token.symbol || '???',
-          description: token.description || '',
-          iconUrl: token.iconUrl || null
+          id: token.id || '',
+          balance: isNaN(balance) ? '0' : balance.toString(),
+          price: isNaN(price) ? '0' : price.toString(),
+          usdPrice: isNaN(usdPrice) ? '0' : usdPrice.toString(),
+          totalBalance: isNaN(balance * price) ? '0' : (balance * price).toString()
         };
       });
-      
-      console.log('Processed tokens array:', tokensArray);
+
+      console.log('Processed tokens array:', processedTokens);
       
       // Сортируем токены по стоимости в USD
-      const sortedTokens = tokensArray.sort((a, b) => {
-        const valueA = parseFloat(a.usdPrice || '0');
-        const valueB = parseFloat(b.usdPrice || '0');
-        return valueB - valueA;
+      const sortedTokens = processedTokens.sort((a: any, b: any) => {
+        const aValue = parseFloat(a.totalBalance || '0');
+        const bValue = parseFloat(b.totalBalance || '0');
+        return bValue - aValue;
       });
-      
+
       console.log('Final sorted tokens:', sortedTokens);
-      
       setUserTokens(sortedTokens);
+
+      // Загружаем данные Momentum
+      const momentumResult = await fetchMomentumBalance(wallet.account.address);
+      console.log('Momentum API response:', momentumResult);
+      setMomentumData(momentumResult.raw || []);
+
+      // Загружаем данные Scallop
+      const scallopResult = await fetchScallopBalance(wallet.account.address);
+      console.log('Scallop API response:', scallopResult);
+      setScallopData(scallopResult.raw || null);
+
+      // Загружаем данные Finkeeper
+      await fetchFinkeeperData();
+
     } catch (error) {
       console.error('Error fetching assets:', error);
       setUserTokens([]);
@@ -402,22 +408,31 @@ export default function ControlPage() {
 
       // Получаем данные Scallop
       const scallopResult = await fetchScallopBalance(wallet.account.address);
+      console.log('Scallop API response:', scallopResult);
       setScallopData(scallopResult.raw || null);
+
+      // Получаем данные Finkeeper
+      await fetchFinkeeperData();
 
       // Проверяем наличие позиций и устанавливаем начальное состояние блоков
       const hasMomentumPositions = Array.isArray(momentumResult.raw) && momentumResult.raw.length > 0;
       const hasScallopPositions = scallopResult.raw && scallopResult.raw.lendings && scallopResult.raw.lendings.length > 0;
+      const hasFinkeeperPositions = finkeeperData?.data?.walletIdPlatformList?.[0]?.platformList?.some(
+        platform => !['Scallop', 'Momentum'].includes(platform.platformName) && parseFloat(platform.currencyAmount || '0') > 0
+      );
       
       // Если нет позиций ни в одном протоколе, показываем только Wallet
-      if (!hasMomentumPositions && !hasScallopPositions) {
+      if (!hasMomentumPositions && !hasScallopPositions && !hasFinkeeperPositions) {
         setShowTokens(true);
         setShowMomentum(false);
         setShowScallop(false);
+        setShowFinkeeperProtocols({});
       } else {
         // Если есть позиции, сворачиваем все блоки
         setShowTokens(false);
         setShowMomentum(false);
         setShowScallop(false);
+        setShowFinkeeperProtocols({});
       }
     } catch (error) {
       console.error('Error fetching positions:', error);
@@ -435,20 +450,22 @@ export default function ControlPage() {
 
   // Функция для загрузки данных Finkeeper
   const fetchFinkeeperData = async () => {
-    if (!wallet.connected || !wallet.account) return;
-    
-    setIsLoadingFinkeeper(true);
     try {
+      if (!wallet.account) return;
+
+      console.log('Fetching Finkeeper data for address:', wallet.account.address);
       const response = await fetch('https://finkeeper-okx.vercel.app/api/defi/positions', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          walletAddressList: [{
-            chainId: 784,
-            walletAddress: wallet.account.address
-          }]
+          walletAddressList: [
+            {
+              chainId: 784,
+              walletAddress: wallet.account.address
+            }
+          ]
         })
       });
 
@@ -457,18 +474,25 @@ export default function ControlPage() {
       }
 
       const data = await response.json();
-      setFinkeeperData(data);
+      console.log('Finkeeper response:', data);
 
-      // Инициализируем состояние видимости для каждого протокола
-      const initialVisibility: Record<number, boolean> = {};
-      data.data.walletIdPlatformList[0].platformList.forEach((platform: FinkeeperPlatform) => {
-        initialVisibility[platform.analysisPlatformId] = false;
-      });
-      setShowFinkeeperProtocols(initialVisibility);
+      if (data.code !== 0) {
+        console.error('Finkeeper API error:', data.msg);
+        setFinkeeperData(null);
+        return;
+      }
+
+      if (!data.data?.walletIdPlatformList?.[0]?.platformList) {
+        console.log('No Finkeeper data available');
+        setFinkeeperData(null);
+        return;
+      }
+
+      console.log('Setting Finkeeper data:', data);
+      setFinkeeperData(data);
     } catch (error) {
       console.error('Error fetching Finkeeper data:', error);
-    } finally {
-      setIsLoadingFinkeeper(false);
+      setFinkeeperData(null);
     }
   };
 
@@ -481,6 +505,7 @@ export default function ControlPage() {
 
   // Функция для загрузки детальных данных
   const fetchFinkeeperDetail = async (platformId: number, address: string) => {
+    console.log('Fetching Finkeeper detail for platform:', platformId, 'address:', address);
     setIsLoadingFinkeeperDetail(prev => ({ ...prev, [platformId]: true }));
     setFinkeeperErrors(prev => ({ ...prev, [platformId]: '' }));
     
@@ -497,6 +522,7 @@ export default function ControlPage() {
       }
       
       const data = await response.json();
+      console.log('Finkeeper detail response for platform', platformId, ':', data);
       setFinkeeperDetailData(prev => ({ ...prev, [platformId]: data }));
     } catch (error) {
       console.error('Error fetching Finkeeper detail:', error);
@@ -520,6 +546,48 @@ export default function ControlPage() {
   const getDetailData = useMemo(() => (platformId: number) => {
     return finkeeperDetailData[platformId]?.data?.walletIdPlatformDetailList[0]?.networkHoldVoList[0]?.investTokenBalanceVoList || [];
   }, [finkeeperDetailData]);
+
+  const handleDisconnect = () => {
+    wallet.disconnect();
+    setUserTokens([]);
+    setFinkeeperData(null);
+    setShowFinkeeperProtocols({});
+    setShowTokens(false);
+    setSelectedAsset(null);
+  };
+
+  // Обновляем общую сумму активов при изменении данных
+  useEffect(() => {
+    let sum = totalTokenValue;
+    
+    // Добавляем сумму из Momentum
+    if (momentumData && Array.isArray(momentumData)) {
+      sum += momentumData.reduce((acc: number, pos: any) => acc + (pos.amount || 0), 0);
+    }
+    
+    // Добавляем сумму из Scallop
+    if (scallopData && scallopData.lendings) {
+      sum += scallopData.lendings.reduce((acc: number, lending: any) => acc + (lending.suppliedValue || 0), 0);
+    }
+    
+    // Добавляем сумму из Finkeeper
+    if (finkeeperData?.data?.walletIdPlatformList?.[0]?.platformList) {
+      sum += finkeeperData.data.walletIdPlatformList[0].platformList
+        .filter(platform => !['Scallop', 'Momentum'].includes(platform.platformName))
+        .reduce((acc, platform) => acc + parseFloat(platform.currencyAmount || '0'), 0);
+    }
+    
+    setTotalAssets(sum);
+  }, [totalTokenValue, momentumData, scallopData, finkeeperData]);
+
+  // Обновляем общую стоимость токенов при изменении списка токенов
+  useEffect(() => {
+    const total = userTokens.reduce((sum, token) => {
+      const value = parseFloat(token.usdPrice || '0');
+      return sum + (isNaN(value) ? 0 : value);
+    }, 0);
+    setTotalTokenValue(total);
+  }, [userTokens]);
 
   return (
     <div className="flex flex-row justify-between h-dvh bg-white dark:bg-zinc-900">
@@ -567,7 +635,7 @@ export default function ControlPage() {
                   <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">My Assets</h2>
                   {wallet.connected && (
                     <span className="text-lg font-bold text-zinc-900 dark:text-zinc-100">
-                      ${formatNumber(userTokens.reduce((sum, token) => sum + parseFloat(token.usdPrice || '0'), 0))}
+                      ${formatNumber(totalAssets)}
                     </span>
                   )}
                   <button
@@ -618,7 +686,7 @@ export default function ControlPage() {
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={() => wallet.disconnect()}
+                      onClick={handleDisconnect}
                       className="ml-2"
                     >
                       Disconnect
@@ -665,7 +733,7 @@ export default function ControlPage() {
                     </div>
                     {wallet.connected && (
                       <span className="font-bold text-zinc-900 dark:text-zinc-100">
-                        ${formatNumber(userTokens.reduce((sum, token) => sum + parseFloat(token.usdPrice || '0'), 0))}
+                        ${formatNumber(totalTokenValue)}
                       </span>
                     )}
                   </div>
@@ -771,8 +839,6 @@ export default function ControlPage() {
                         momentumData && momentumData.length > 0 ? (
                           <div className="space-y-4">
                             {/* Total Rewards and Claim Button */}
-                            {console.log('Momentum data:', momentumData)}
-                            {console.log('Has rewards:', momentumData.some((pos: any) => pos.claimableRewards > 0))}
                             {momentumData.some((pos: any) => pos.claimableRewards > 0) && (
                               <div className="flex items-center justify-between p-2 rounded-lg bg-emerald-50 dark:bg-emerald-900/20">
                                 <div className="flex items-center gap-2">
@@ -912,13 +978,16 @@ export default function ControlPage() {
                   )
                 },
                 // Finkeeper blocks
-                ...(finkeeperData?.data.walletIdPlatformList[0].platformList
-                  .filter(platform => !['Scallop', 'Momentum'].includes(platform.platformName))
+                ...(finkeeperData?.data?.walletIdPlatformList?.[0]?.platformList
+                  ?.filter(platform => 
+                    !['Scallop', 'Momentum'].includes(platform.platformName) && 
+                    parseFloat(platform.currencyAmount || '0') > 0
+                  )
                   .map(platform => ({
                     id: platform.analysisPlatformId.toString(),
                     name: platform.platformName,
                     logo: platform.platformLogo,
-                    value: parseFloat(platform.currencyAmount),
+                    value: parseFloat(platform.currencyAmount || '0'),
                     show: showFinkeeperProtocols[platform.analysisPlatformId],
                     setShow: (show: boolean) => {
                       setShowFinkeeperProtocols(prev => ({
@@ -950,7 +1019,7 @@ export default function ControlPage() {
                             </Button>
                           </div>
                         ) : wallet.connected ? (
-                          parseFloat(platform.currencyAmount) > 0 ? (
+                          parseFloat(platform.currencyAmount || '0') > 0 ? (
                             <div className="space-y-3">
                               {getDetailData(platform.analysisPlatformId)
                                 .filter(investment => !hideSmallAssets || parseFloat(investment.totalValue) >= 1)
