@@ -1,3 +1,78 @@
+# Harvester AI - DeFi Dashboard for SUI
+
+Harvester AI is a DeFi agent that simplifies interaction with SUI protocols. We built a unified dashboard where users can track and manage assets, collect rewards, and make deposits with one click. Supported protocols include Navi, Suilend, Bluefin, Scallop, Momentum, and more. We automate user actions and are implementing gasless transactions. It's the next step toward smart, seamless, and profitable DeFi.
+
+## Key Features
+
+- 🎯 Unified dashboard for all DeFi operations
+- 🔄 Automation of routine actions
+- 💰 Reward collection from all protocols
+- ⚡ Fast transactions with minimal fees
+- 🔒 Secure asset management
+
+## Supported Protocols
+
+| 🏦 Name            | 📖 Read | 💸 Supply | 💰 Withdraw  | 🎁 Rewards|
+|--------------------|---------|-----------|--------------|----------|
+| **SUI Staking**    |   ✅    |   ❌      |   ❌         |   ❌     |
+| **Scallop**        |   ✅    |   ❌      |   ❌         |   ❌     |
+| **Cetus**          |   ✅    |   ❌      |   ❌         |   ❌     |
+| **Navi Protocol**  |   ✅    |   ❌      |   ❌         |   ✅     |
+| **Aftermath**      |   ✅    |   ❌      |   ❌         |   ❌     |
+| **Volo**           |   ✅    |   ❌      |   ❌         |   ❌     |
+| **Turbos Finance** |   ✅    |   ❌      |   ❌         |   ❌     |
+| **Haedal Protocol**|   ✅    |   ❌      |   ❌         |   ❌     |
+| **Suilend**        |   ✅    |   ❌      |   ❌         |   ❌     |
+| **Ika**            |   ✅    |   ❌      |   ❌         |   ❌     |
+| **Bluefin**        |   ✅    |   ❌      |   ❌         |   ❌     |
+| **Momentum**       |   ✅    |   ❌      |   ❌         |   ✅     |
+
+## Related Projects
+
+- [FinKeeper App](https://finkeeper.pro/app) - A Telegram-based DeFi management application that inspired some of our features
+- [Harvester Server](https://github.com/MariKhad/harvester-server) - Backend server implementation
+- [Harvester API](https://harvester-server-production.up.railway.app/api#) - API documentation and testing interface
+
+## APIs Used
+
+- [Sui SDK](https://github.com/MystenLabs/sui/tree/main/sdk/typescript) - For SUI blockchain interaction
+- [Navi Protocol API](https://docs.naviprotocol.io/) - For Navi protocol integration
+- [Suilend API](https://docs.suilend.fi/) - For Suilend integration
+- [Bluefin API](https://docs.bluefin.io/) - For Bluefin integration
+- [Scallop API](https://docs.scallop.io/) - For Scallop integration
+- [Momentum API](https://docs.momentum.xyz/) - For Momentum integration
+
+## Installation and Setup
+
+1. Clone the repository
+```bash
+git clone https://github.com/your-username/harvester-sui.git
+```
+
+2. Install dependencies
+```bash
+npm install
+```
+
+3. Create `.env` file based on `.env.example` and fill in the required environment variables
+
+4. Start the project
+```bash
+npm run dev
+```
+
+## Future Improvements
+
+- 🤖 AI integration for strategy optimization
+- 🔄 Automatic portfolio rebalancing
+- 📊 Enhanced analytics and reporting
+- 🔐 Improved security and auditing
+- 🌐 Support for additional protocols
+
+## License
+
+MIT
+
 # Generative UI with React Server Components and Vercel AI SDK
 
 > **Note**: Development of AI SDK RSC is currently paused. For more information, see [Migrating from AI SDK RSC](https://sdk.vercel.ai/docs/ai-sdk-rsc/migrating-to-ui#background).
@@ -40,21 +115,5 @@ To learn more about Vercel AI SDK or Next.js take a look at the following resour
 - [Vercel AI SDK docs](https://sdk.vercel.ai/docs)
 - [Vercel AI Playground](https://play.vercel.ai)
 - [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-
-
-| 🏦 Name            | 📖 Read | 💸 Supply | 💰 Withdraw  | 🎁 Rewards|
-|--------------------|---------|-----------|--------------|----------|
-| **SUI Staking**    |   ✅    |   ❌      |   ❌         |   ❌     |
-| **Scallop**        |   ✅    |   ❌      |   ❌         |   ❌     |
-| **Cetus**          |   ✅    |   ❌      |   ❌         |   ❌     |
-| **Navi Protocol**  |   ✅    |   ❌      |   ❌         |   ✅     |
-| **Aftermath**      |   ✅    |   ❌      |   ❌         |   ❌     |
-| **Volo**           |   ✅    |   ❌      |   ❌         |   ❌     |
-| **Turbos Finance** |   ✅    |   ❌      |   ❌         |   ❌     |
-| **Haedal Protocol**|   ✅    |   ❌      |   ❌         |   ❌     |
-| **Suilend**        |   ✅    |   ❌      |   ❌         |   ❌     |
-| **Ika**            |   ✅    |   ❌      |   ❌         |   ❌     |
-| **Bluefin**        |   ✅    |   ❌      |   ❌         |   ❌     |
-| **Momentum**       |   ✅    |   ❌      |   ❌         |   ✅     |
 
 
