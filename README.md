@@ -24,7 +24,7 @@ Harvester AI is a DeFi agent that simplifies interaction with SUI protocols. We 
 | <img src="https://static.coinall.ltd/cdn/web3/protocol/logo/volo-none.png/type=png_350_0?u=1747932264550" width="20" height="20" alt="Volo" /> **Volo**           |   ✅    | coming soon | coming soon | coming soon |
 | <img src="https://static.coinall.ltd/cdn/web3/protocol/logo/turbos-none.png/type=png_350_0?u=1747933908855" width="20" height="20" alt="Turbos" /> **Turbos Finance** |   ✅    | coming soon | coming soon | coming soon |
 | <img src="https://static.coinall.ltd/cdn/web3/protocol/logo/haedalprotocol-none.jpg/type=jpg_350_0?u=1747932006405" width="20" height="20" alt="Haedal" /> **Haedal Protocol**|   ✅    | coming soon | coming soon | coming soon |
-| <img src="https://app.suilend.fi/favicon.ico" width="20" height="20" alt="Suilend" /> **Suilend**        |   ✅    | coming soon | coming soon | coming soon |
+| <img src="https://harvester-sui.vercel.app/_next/image?url=https%3A%2F%2Fstatic.coinall.ltd%2Fcdn%2Fweb3%2Fprotocol%2Flogo%2Fsuilend-none.png%2Ftype%3Dpng_350_0%3Fu%3D1748017958023&w=16&q=75" width="20" height="20" alt="Suilend" /> **Suilend**        |   ✅    | coming soon | coming soon | coming soon |
 | <img src="https://static.coinall.ltd/cdn/web3/protocol/logo/ika-none.png/type=png_350_0?u=1747931561593" width="20" height="20" alt="Ika" /> **Ika**            |   ✅    | coming soon | coming soon | coming soon |
 | <img src="https://bluefin.io/images/square.png" width="20" height="20" alt="Bluefin" /> **Bluefin**        |   ✅    | coming soon | coming soon | coming soon |
 | <img src="https://app.mmt.finance/assets/images/momentum-logo-sq.svg" width="20" height="20" alt="Momentum" /> **Momentum**       |   ✅    | coming soon | coming soon |   ✅     |
