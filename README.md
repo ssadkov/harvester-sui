@@ -1,5 +1,7 @@
 # Harvester AI - DeFi Dashboard for SUI
 
+![Harvester AI Logo](https://raw.githubusercontent.com/MariKhad/harvester-sui/main/public/logo.png)
+
 Harvester AI is a DeFi agent that simplifies interaction with SUI protocols. We built a unified dashboard where users can track and manage assets, collect rewards, and make deposits with one click. Supported protocols include Navi, Suilend, Bluefin, Scallop, Momentum, and more. We automate user actions and are implementing gasless transactions. It's the next step toward smart, seamless, and profitable DeFi.
 
 ## Key Features
@@ -14,18 +16,18 @@ Harvester AI is a DeFi agent that simplifies interaction with SUI protocols. We 
 
 | 🏦 Name            | 📖 Read | 💸 Supply | 💰 Withdraw  | 🎁 Rewards|
 |--------------------|---------|-----------|--------------|----------|
-| **SUI Staking**    |   ✅    |   ❌      |   ❌         |   ❌     |
-| **Scallop**        |   ✅    |   ❌      |   ❌         |   ❌     |
-| **Cetus**          |   ✅    |   ❌      |   ❌         |   ❌     |
-| **Navi Protocol**  |   ✅    |   ❌      |   ❌         |   ✅     |
-| **Aftermath**      |   ✅    |   ❌      |   ❌         |   ❌     |
-| **Volo**           |   ✅    |   ❌      |   ❌         |   ❌     |
-| **Turbos Finance** |   ✅    |   ❌      |   ❌         |   ❌     |
-| **Haedal Protocol**|   ✅    |   ❌      |   ❌         |   ❌     |
-| **Suilend**        |   ✅    |   ❌      |   ❌         |   ❌     |
-| **Ika**            |   ✅    |   ❌      |   ❌         |   ❌     |
-| **Bluefin**        |   ✅    |   ❌      |   ❌         |   ❌     |
-| **Momentum**       |   ✅    |   ❌      |   ❌         |   ✅     |
+| ![SUI](https://static.coinall.ltd/cdn/web3/protocol/logo/suistaking-none.jpg/type=jpg_350_0?u=1744564533560) **SUI Staking**    |   ✅    | coming soon | coming soon | coming soon |
+| ![Scallop](https://app.scallop.io/images/logo-192.png) **Scallop**        |   ✅    | coming soon | coming soon | coming soon |
+| ![Cetus](https://static.coinall.ltd/cdn/web3/protocol/logo/cetus-none.png/type=png_350_0?u=1747931647736) **Cetus**          |   ✅    | coming soon | coming soon | coming soon |
+| ![Navi](https://app.naviprotocol.io/favicon.png) **Navi Protocol**  |   ✅    | coming soon | coming soon |   ✅     |
+| ![Aftermath](https://static.coinall.ltd/cdn/web3/protocol/logo/aftermathfinance-none.png/type=png_350_0?u=1747949256203) **Aftermath**      |   ✅    | coming soon | coming soon | coming soon |
+| ![Volo](https://static.coinall.ltd/cdn/web3/protocol/logo/volo-none.png/type=png_350_0?u=1747932264550) **Volo**           |   ✅    | coming soon | coming soon | coming soon |
+| ![Turbos](https://static.coinall.ltd/cdn/web3/protocol/logo/turbos-none.png/type=png_350_0?u=1747933908855) **Turbos Finance** |   ✅    | coming soon | coming soon | coming soon |
+| ![Haedal](https://static.coinall.ltd/cdn/web3/protocol/logo/haedalprotocol-none.jpg/type=jpg_350_0?u=1747932006405) **Haedal Protocol**|   ✅    | coming soon | coming soon | coming soon |
+| ![Suilend](https://app.suilend.fi/favicon.ico) **Suilend**        |   ✅    | coming soon | coming soon | coming soon |
+| ![Ika](https://static.coinall.ltd/cdn/web3/protocol/logo/ika-none.png/type=png_350_0?u=1747931561593) **Ika**            |   ✅    | coming soon | coming soon | coming soon |
+| ![Bluefin](https://bluefin.io/images/square.png) **Bluefin**        |   ✅    | coming soon | coming soon | coming soon |
+| ![Momentum](https://app.mmt.finance/assets/images/momentum-logo-sq.svg) **Momentum**       |   ✅    | coming soon | coming soon |   ✅     |
 
 ## Related Projects
 
