@@ -33,7 +33,7 @@ Harvester AI is a DeFi agent that simplifies interaction with SUI protocols. We 
 
 - [FinKeeper App](https://finkeeper.pro/app) - A Telegram-based DeFi management application that inspired some of our features
 - [Harvester Server](https://github.com/MariKhad/harvester-server) - Backend server implementation
-- [Harvester API](https://harvester-server-production.up.railway.app/api#) - API documentation and testing interface
+- [Harvester API](https://harvester-server-1.onrender.com/api#) - API documentation and testing interface
 
 ## APIs Used
 

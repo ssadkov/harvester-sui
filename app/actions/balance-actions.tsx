@@ -243,7 +243,7 @@ export async function fetchScallopBalance(address: string) {
     console.log(`Fetching Scallop balance for address: ${address}`);
     
     const response = await fetch(
-      `https://harvester-server-production.up.railway.app/scallop/balance/${address}`,
+      `https://harvester-server-1.onrender.com/scallop/balance/${address}`,
       {
         method: 'GET',
         headers: {
@@ -281,7 +281,7 @@ export async function fetchMomentumBalance(address: string) {
     console.log(`Fetching Momentum positions for address: ${address}`);
     
     const response = await fetch(
-      `https://harvester-server-production.up.railway.app/momentum/balance/${address}`,
+      `https://harvester-server-1.onrender.com/momentum/balance/${address}`,
       {
         method: 'GET',
         headers: {

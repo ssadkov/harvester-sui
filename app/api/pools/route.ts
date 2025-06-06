@@ -12,7 +12,7 @@ export async function GET(request: Request) {
   }
 
   try {
-    const apiUrl = `https://harvester-server-production.up.railway.app/pools?search=${search.toLowerCase()}`;
+    const apiUrl = `https://harvester-server-1.onrender.com/pools?search=${search.toLowerCase()}`;
     console.log('API: Fetching from:', apiUrl);
 
     const controller = new AbortController();
